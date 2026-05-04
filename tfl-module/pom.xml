@@ -64,7 +64,7 @@
                             <transformers>
                                 <transformer implementation=
                                                      "org.apache.maven.plugins.shade.resource.ManifestResourceTransformer">
-                                    <mainClass>com.paradiso.tfl.Main</mainClass>
+                                    <mainClass>org.ulpgc.paradiso.tfl.Main</mainClass>
                                 </transformer>
                             </transformers>
                         </configuration>
