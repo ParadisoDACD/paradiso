@@ -1,38 +1,62 @@
 # Sprint 1 — Captura de datos: Ticketmaster + TfL
 
 Asignatura: Desarrollo de Aplicaciones para Ciencia de Datos  
-Universidad: Universidad de Las Palmas de Gran Canaria  
+Universidad de Las Palmas de Gran Canaria  
+Proyecto: Paradiso  
 Sprint: 1 de 3
 
 ## Descripción
 
-Proyecto multimódulo en Java 21 que captura datos de dos fuentes externas y los persiste de forma incremental en bases de datos SQLite independientes.
+Proyecto Java 21 multimódulo orientado a la captura de datos desde dos fuentes externas dinámicas. Cada módulo consume una API distinta, transforma la respuesta JSON a un modelo interno propio y persiste los datos de forma incremental en una base de datos SQLite independiente.
 
-### Módulo 1 — Ticketmaster
+El objetivo del Sprint 1 es dejar preparada una base sólida de ingesta y persistencia, sin cruzar todavía los datos entre fuentes.
 
-Captura eventos culturales de música y festivales en Londres, Reino Unido, usando la Ticketmaster Discovery API v2.
+## Módulos
 
-Los datos se persisten en:
+### Ticketmaster Module
+
+El módulo `ticketmaster-module` captura eventos musicales y festivales en Londres, Reino Unido, usando la Ticketmaster Discovery API v2.
+
+Los datos se almacenan en:
 
 ```text
 data/ticketmaster.db
 ```
 
-### Módulo 2 — TfL
+Tablas principales:
 
-Captura itinerarios de transporte público desde hubs principales de Londres hasta venues asociados a conciertos, usando la TfL Unified API.
+```text
+ticketmaster_capture_run
+ticketmaster_event_capture
+```
 
-Los datos se persisten en:
+### TfL Module
+
+El módulo `tfl-module` captura itinerarios de transporte público desde hubs principales de Londres hasta venues asociados a conciertos, usando la TfL Unified API Journey Planner.
+
+Los datos se almacenan en:
 
 ```text
 data/tfl.db
 ```
 
-### Propuesta de valor
+Tablas principales:
 
-En sprints posteriores, el proyecto permitirá cruzar eventos musicales de Ticketmaster con itinerarios reales de transporte público de TfL para identificar qué conciertos en Londres son accesibles desde distintos hubs urbanos.
+```text
+tfl_capture_run
+tfl_journey_capture
+```
 
-En el Sprint 1 no se cruzan datos entre fuentes. Cada módulo consume, transforma y persiste sus propios datos de forma independiente.
+## Propuesta de valor
+
+En sprints posteriores, el proyecto permitirá cruzar eventos musicales disponibles en Ticketmaster con itinerarios reales de transporte público de TfL para identificar qué conciertos en Londres son accesibles desde distintos hubs urbanos.
+
+Durante el Sprint 1, los módulos se mantienen completamente independientes:
+
+- Ticketmaster captura y persiste únicamente eventos.
+- TfL captura y persiste únicamente itinerarios.
+- No existe cruce de datos entre ambas fuentes.
+- Cada módulo tiene su propia configuración, modelo, feeder, mapper, persistencia, controller y punto de entrada.
 
 ## Tecnologías
 
@@ -49,6 +73,13 @@ En el Sprint 1 no se cruzan datos entre fuentes. Cada módulo consume, transform
 ```text
 paradiso/
 ├── pom.xml
+├── README.md
+├── docs/
+│   └── sprint1/
+│       ├── diagrama-clases-ticketmaster.png
+│       ├── diagrama-clases-tfl.png
+│       ├── modelo-datos-ticketmaster.png
+│       └── modelo-datos-tfl.png
 ├── ticketmaster-module/
 │   ├── pom.xml
 │   └── src/
@@ -62,44 +93,36 @@ paradiso/
 │       │   │   ├── model/
 │       │   │   └── persistence/
 │       │   └── resources/
-│       │       ├── ticketmaster.properties.example
-│       │       └── ticketmaster.properties
+│       │       └── ticketmaster.properties.example
 │       └── test/
 │           └── java/org/ulpgc/paradiso/ticketmaster/mapper/
-├── tfl-module/
-│   ├── pom.xml
-│   └── src/
-│       ├── main/
-│       │   ├── java/org/ulpgc/paradiso/tfl/
-│       │   │   ├── Main.java
-│       │   │   ├── config/
-│       │   │   ├── controller/
-│       │   │   ├── feeder/
-│       │   │   ├── mapper/
-│       │   │   ├── model/
-│       │   │   └── persistence/
-│       │   └── resources/
-│       │       ├── tfl.properties.example
-│       │       └── tfl.properties
-│       └── test/
-│           └── java/org/ulpgc/paradiso/tfl/mapper/
-└── docs/
-    └── sprint1/
-        ├── diagrama-clases-ticketmaster.png
-        ├── diagrama-clases-tfl.png
-        ├── modelo-datos-ticketmaster.png
-        └── modelo-datos-tfl.png
+└── tfl-module/
+    ├── pom.xml
+    └── src/
+        ├── main/
+        │   ├── java/org/ulpgc/paradiso/tfl/
+        │   │   ├── Main.java
+        │   │   ├── config/
+        │   │   ├── controller/
+        │   │   ├── feeder/
+        │   │   ├── mapper/
+        │   │   ├── model/
+        │   │   └── persistence/
+        │   └── resources/
+        │       └── tfl.properties.example
+        └── test/
+            └── java/org/ulpgc/paradiso/tfl/mapper/
 ```
 
-> Los archivos `.properties` reales no se suben al repositorio. Solo se versionan los `.properties.example`.
+Los archivos `.properties` reales no se versionan porque contienen claves de API. El repositorio incluye únicamente las plantillas `.properties.example`.
 
 ## Configuración
 
-Antes de ejecutar cada módulo, hay que crear los archivos de configuración reales a partir de las plantillas.
+Antes de ejecutar los módulos, hay que crear los archivos de configuración reales a partir de las plantillas incluidas en el repositorio.
 
-### Ticketmaster
+### Configuración de Ticketmaster
 
-Crear:
+Crear el archivo:
 
 ```text
 ticketmaster-module/src/main/resources/ticketmaster.properties
@@ -117,9 +140,9 @@ capture.period.minutes=60
 sqlite.path=data/ticketmaster.db
 ```
 
-### TfL
+### Configuración de TfL
 
-Crear:
+Crear el archivo:
 
 ```text
 tfl-module/src/main/resources/tfl.properties
@@ -135,13 +158,15 @@ capture.period.minutes=60
 sqlite.path=data/tfl.db
 ```
 
-## Ejecución desde IntelliJ
+## Ejecución
 
-Cada módulo tiene su propio `Main.java`.
+Cada módulo tiene su propio `Main.java` y puede ejecutarse de forma independiente.
 
-### Ticketmaster
+### Ejecución desde IntelliJ
 
-Ejecutar:
+#### Ticketmaster
+
+Clase principal:
 
 ```text
 ticketmaster-module/src/main/java/org/ulpgc/paradiso/ticketmaster/Main.java
@@ -153,9 +178,9 @@ Para una ejecución única, añadir en **Program arguments**:
 --once
 ```
 
-### TfL
+#### TfL
 
-Ejecutar:
+Clase principal:
 
 ```text
 tfl-module/src/main/java/org/ulpgc/paradiso/tfl/Main.java
@@ -167,9 +192,11 @@ Para una ejecución única, añadir en **Program arguments**:
 --once
 ```
 
-## Ejecución desde terminal
+Sin el argumento `--once`, cada módulo arranca en modo periódico y ejecuta capturas usando `ScheduledExecutorService`.
 
-Compilar el proyecto completo:
+### Ejecución desde terminal
+
+Compilar y empaquetar el proyecto completo:
 
 ```bash
 mvn clean package
@@ -187,39 +214,73 @@ Ejecutar TfL:
 java -jar tfl-module/target/tfl-module-1.0-SNAPSHOT.jar --once
 ```
 
-## Persistencia
+## Persistencia incremental
 
-Cada módulo persiste en su propia base de datos SQLite.
+Cada ejecución genera un identificador de lote (`capture_batch_id`) y registra metadatos en una tabla de control. Los datos capturados se insertan en tablas históricas. Las ejecuciones nuevas añaden filas; no se borran ni sobrescriben capturas anteriores.
 
 ### Ticketmaster
 
-```text
-data/ticketmaster.db
-```
-
-Tablas:
+`tickermaster_capture_run` no existe en el proyecto. La tabla correcta es:
 
 ```text
 ticketmaster_capture_run
+```
+
+Registra cada ejecución de captura: identificador de lote, inicio, fin, estado, alcance, registros obtenidos, registros insertados y error en caso de fallo.
+
+```text
 ticketmaster_event_capture
+```
+
+Registra los eventos capturados y mantiene relación con la ejecución mediante `capture_batch_id`.
+
+Relación:
+
+```text
+ticketmaster_capture_run 1 ─── N ticketmaster_event_capture
 ```
 
 ### TfL
 
 ```text
-data/tfl.db
+tfl_capture_run
 ```
 
-Tablas:
+Registra cada ejecución de captura: identificador de lote, inicio, fin, estado, alcance, registros obtenidos, registros insertados y error en caso de fallo.
 
 ```text
-tfl_capture_run
 tfl_journey_capture
 ```
 
-Las tablas `capture_run` guardan metadatos de cada ejecución: identificador de lote, fecha de inicio, fecha de fin, estado, alcance y contadores.
+Registra los itinerarios capturados y mantiene relación con la ejecución mediante `capture_batch_id`.
 
-Las tablas históricas guardan los datos capturados. La persistencia es incremental: las ejecuciones nuevas añaden filas, no borran las anteriores.
+Relación:
+
+```text
+tfl_capture_run 1 ─── N tfl_journey_capture
+```
+
+## APIs utilizadas
+
+### Ticketmaster Discovery API
+
+- Endpoint base: `https://app.ticketmaster.com/discovery/v2/events.json`
+- Autenticación: parámetro `apikey`
+- Ámbito usado en Sprint 1:
+  - País: GB
+  - Ciudad: London
+  - Categorías: music, festival
+  - Ventana temporal: próximos 14 días
+
+### TfL Unified API Journey Planner
+
+- Endpoint base: `https://api.tfl.gov.uk/Journey/JourneyResults`
+- Autenticación: parámetro `app_key`
+- Ámbito usado en Sprint 1:
+  - Rutas desde hubs principales de Londres hacia venues musicales
+  - Fechas: día actual y día siguiente
+  - Franjas: 09:00, 14:00 y 19:00
+  - Modos: tube, bus, overground, elizabeth-line, dlr, tram y national-rail
 
 ## Tests
 
@@ -236,61 +297,17 @@ TicketmasterEventMapperTest
 TflJourneyMapperTest
 ```
 
+Los tests cubren el mapeo de JSON completo, respuestas sin datos y casos parciales en los que faltan campos opcionales.
+
 ## Independencia de módulos
 
-Durante el Sprint 1 los módulos son independientes:
+Durante el Sprint 1, los módulos se mantienen desacoplados:
 
 - `ticketmaster-module` no importa clases de `tfl-module`.
 - `tfl-module` no importa clases de `ticketmaster-module`.
-- Cada módulo tiene su propia configuración, feeder, mapper, modelo, persistencia, controller y `Main`.
+- Cada módulo se ejecuta por separado.
 - Cada módulo persiste en su propia base de datos SQLite.
-
-## APIs utilizadas
-
-### Ticketmaster Discovery API
-
-- Endpoint base: `https://app.ticketmaster.com/discovery/v2/events.json`
-- Autenticación: parámetro `apikey`
-- Ámbito usado en Sprint 1:
-    - País: GB
-    - Ciudad: London
-    - Categorías: music, festival
-    - Ventana temporal: próximos 14 días
-
-### TfL Unified API
-
-- Endpoint base: `https://api.tfl.gov.uk/Journey/JourneyResults`
-- Autenticación: parámetro `app_key`
-- Ámbito usado en Sprint 1:
-    - Rutas desde hubs principales de Londres hacia venues musicales
-    - Fechas: día actual y día siguiente
-    - Franjas: 09:00, 14:00, 19:00
-
-## Modelo de datos
-
-### Ticketmaster
-
-`ticketsmaster_capture_run` registra cada ejecución de captura.
-
-`ticketmaster_event_capture` registra los eventos capturados y mantiene relación con la ejecución mediante `capture_batch_id`.
-
-Relación:
-
-```text
-ticketmaster_capture_run 1 ─── N ticketmaster_event_capture
-```
-
-### TfL
-
-`tfl_capture_run` registra cada ejecución de captura.
-
-`tfl_journey_capture` registra los itinerarios capturados y mantiene relación con la ejecución mediante `capture_batch_id`.
-
-Relación:
-
-```text
-tfl_capture_run 1 ─── N tfl_journey_capture
-```
+- No hay lógica de cruce de datos en este sprint.
 
 ## Documentación gráfica
 
@@ -300,7 +317,7 @@ Los diagramas del Sprint 1 se encuentran en:
 docs/sprint1/
 ```
 
-Archivos esperados:
+Archivos incluidos:
 
 ```text
 diagrama-clases-ticketmaster.png
@@ -309,13 +326,14 @@ modelo-datos-ticketmaster.png
 modelo-datos-tfl.png
 ```
 
-## Cierre del Sprint 1
+## Versionado del Sprint 1
 
-Al finalizar el Sprint 1 se debe crear un tag anotado:
+La entrega del Sprint 1 queda identificada mediante el tag anotado:
 
-```bash
-git tag -a sprint-1 -m "Cierre del Sprint 1: captura de datos Ticketmaster + TfL"
-git push origin sprint-1
+```text
+sprint-1
 ```
 
-El desarrollo continuará en la misma rama `main` durante los siguientes sprints.
+Este tag permite recuperar el estado exacto del repositorio correspondiente a la entrega del Sprint 1.
+
+El desarrollo de los siguientes sprints continuará sobre la misma rama `main`, evolucionando los módulos existentes sin duplicar el proyecto en carpetas separadas por sprint.
