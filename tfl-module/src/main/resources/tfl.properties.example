@@ -1,0 +1,5 @@
+app.key=
+routes=KingsCross>O2Arena;Victoria>WembleyPark;Waterloo>BrixtonAcademy;Paddington>RoyalAlbertHall;LondonBridge>AlexandraPalace
+capture.times=0900,1400,1900
+capture.period.minutes=60
+sqlite.path=data/tfl.db
