@@ -37,7 +37,7 @@ public class TflJourneyFeeder implements JourneyFeeder {
                 + "&time=" + time
                 + "&timeIs=Departing"
                 + "&journeyPreference=LeastTime"
-                + "&mode=tube,bus,overground,elizabeth-line,dlr,tram";
+                + "&mode=tube,bus,overground,elizabeth-line,dlr,tram,national-rail";
 
         Request request = new Request.Builder()
                 .url(url)
