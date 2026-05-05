@@ -51,4 +51,16 @@ public class TflConfig {
         }
         return routes;
     }
+
+    public String getBrokerUrl() {
+        return props.getProperty("broker.url", "tcp://localhost:61616");
+    }
+
+    public String getTopicName() {
+        return props.getProperty("topic.name", "TflJourney");
+    }
+
+    public String getSourceSystem() {
+        return props.getProperty("source.system", "tfl-module");
+    }
 }
