@@ -1,3 +1,4 @@
+# Sprint 1
 api.key=
 countries=GB
 cities=London
@@ -5,3 +6,9 @@ categories=music,festival
 lookahead.days=14
 capture.period.minutes=60
 sqlite.path=data/ticketmaster.db
+
+# Sprint 2
+broker.url=tcp://localhost:61616
+topic.name=TicketmasterEvent
+source.system=ticketmaster-module
+# Nota: sqlite.path ya no se usa en el flujo principal del Sprint 2

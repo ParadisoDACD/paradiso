@@ -38,15 +38,20 @@ build/
 ### Mac OS ###
 .DS_Store
 
-# Bases de datos SQLite generadas localmente — no subir
+### Bases de datos SQLite ###
 *.db
 *.sqlite
 *.sqlite3
 data/
 
-# Archivos de configuración con claves reales — NUNCA subir a GitHub
+### Archivos de configuración con claves reales ###
 ticketmaster.properties
 tfl.properties
 
-# Clases compiladas
+### Clases compiladas ###
 *.class
+
+### Event Store y Event Store Builder ###
+eventstore/
+eventstore-builder.properties
+dependency-reduced-pom.xml
