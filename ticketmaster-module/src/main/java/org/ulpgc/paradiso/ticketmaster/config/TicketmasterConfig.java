@@ -51,4 +51,16 @@ public class TicketmasterConfig {
     public List<String> getCategories() {
         return Arrays.asList(props.getProperty("categories", "music").split(","));
     }
+
+    public String getBrokerUrl() {
+        return props.getProperty("broker.url", "tcp://localhost:61616");
+    }
+
+    public String getTopicName() {
+        return props.getProperty("topic.name", "TicketmasterEvent");
+    }
+
+    public String getSourceSystem() {
+        return props.getProperty("source.system", "ticketmaster-module");
+    }
 }

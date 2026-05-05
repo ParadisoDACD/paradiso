@@ -3,7 +3,6 @@ package org.ulpgc.paradiso.ticketmaster.messaging;
 import com.google.gson.Gson;
 import org.ulpgc.paradiso.ticketmaster.model.TicketmasterEvent;
 
-
 public class TicketmasterBrokerEventSerializer {
 
     private static final Gson GSON = new Gson();
