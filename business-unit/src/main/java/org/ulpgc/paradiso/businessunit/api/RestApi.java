@@ -15,6 +15,9 @@ public class RestApi {
 
     private static final int DEFAULT_CONCERT_LIMIT = 10;
     private static final int MAX_CONCERT_LIMIT = 50;
+    private static final int DEFAULT_RECOMMENDATION_LIMIT = 5;
+    private static final int MIN_RECOMMENDATION_LIMIT = 1;
+    private static final int MAX_RECOMMENDATION_LIMIT = 20;
 
     private final Datamart datamart;
     private final ConcertTransportService service;
@@ -49,7 +52,7 @@ public class RestApi {
                         "concertSearch", "/concerts?query={text}",
                         "transport", "/transport",
                         "route", "/concerts/{id}/transport",
-                        "recommendationsBySearch", "/recommendations?query={text}",
+                        "recommendationsBySearch", "/recommendations?query={text}&limit={n}",
                         "recommendationsById", "/recommendations/{id}"
                 )
         )));
@@ -71,12 +74,9 @@ public class RestApi {
             json(ctx, service.searchConcerts(query));
         });
 
-        /*
-         * Debe declararse antes de /concerts/{id}.
-         */
         app.get("/concerts/upcoming", ctx -> {
             String query = ctx.queryParam("query");
-            int limit = parseLimit(ctx.queryParam("limit"));
+            int limit = queryParamAsInt(ctx, "limit", DEFAULT_CONCERT_LIMIT, 1, MAX_CONCERT_LIMIT);
             json(ctx, service.upcomingConcerts(query, limit));
         });
 
@@ -108,7 +108,15 @@ public class RestApi {
                 return;
             }
 
-            ConcertSearchTransportResponse response = service.recommendationsForSearch(query);
+            int limit = queryParamAsInt(
+                    ctx,
+                    "limit",
+                    DEFAULT_RECOMMENDATION_LIMIT,
+                    MIN_RECOMMENDATION_LIMIT,
+                    MAX_RECOMMENDATION_LIMIT
+            );
+
+            ConcertSearchTransportResponse response = service.recommendationsForSearch(query, limit);
 
             if (!response.found()) {
                 ctx.status(404);
@@ -139,7 +147,7 @@ public class RestApi {
         System.out.println("  GET /concerts/upcoming?query={text}&limit={n}");
         System.out.println("  GET /concerts/{id}");
         System.out.println("  GET /concerts/{id}/transport");
-        System.out.println("  GET /recommendations?query={text}");
+        System.out.println("  GET /recommendations?query={text}&limit={n}");
         System.out.println("  GET /recommendations/{id}");
         System.out.println("  GET /transport");
     }
@@ -150,19 +158,22 @@ public class RestApi {
         }
     }
 
-    private int parseLimit(String rawLimit) {
-        if (rawLimit == null || rawLimit.isBlank()) {
-            return DEFAULT_CONCERT_LIMIT;
+    private int queryParamAsInt(Context ctx,
+                                String name,
+                                int defaultValue,
+                                int minValue,
+                                int maxValue) {
+        String value = ctx.queryParam(name);
+
+        if (value == null || value.isBlank()) {
+            return defaultValue;
         }
 
         try {
-            int parsed = Integer.parseInt(rawLimit);
-            if (parsed <= 0) {
-                return DEFAULT_CONCERT_LIMIT;
-            }
-            return Math.min(parsed, MAX_CONCERT_LIMIT);
+            int parsed = Integer.parseInt(value);
+            return Math.max(minValue, Math.min(maxValue, parsed));
         } catch (NumberFormatException exception) {
-            return DEFAULT_CONCERT_LIMIT;
+            return defaultValue;
         }
     }
 

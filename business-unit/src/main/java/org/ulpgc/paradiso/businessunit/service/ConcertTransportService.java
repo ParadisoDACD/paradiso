@@ -17,7 +17,9 @@ import java.util.stream.Collectors;
 public class ConcertTransportService {
 
     private static final int MAX_ROUTES_PER_CONCERT = 10;
-
+    private static final int DEFAULT_RECOMMENDATION_LIMIT = 5;
+    private static final int MIN_RECOMMENDATION_LIMIT = 1;
+    private static final int MAX_RECOMMENDATION_LIMIT = 20;
     private static final ZoneId LONDON_ZONE = ZoneId.of("Europe/London");
 
     private static final Set<String> STOPWORDS = Set.of(
@@ -72,13 +74,17 @@ public class ConcertTransportService {
     }
 
     public ConcertSearchTransportResponse recommendationsForSearch(String query) {
+        return recommendationsForSearch(query, DEFAULT_RECOMMENDATION_LIMIT);
+    }
+
+    public ConcertSearchTransportResponse recommendationsForSearch(String query, int limit) {
         String normalizedQuery = normalize(query);
 
         if (normalizedQuery.isBlank()) {
             return ConcertSearchTransportResponse.empty(query);
         }
 
-        List<ConcertTransportResponse> results = upcomingConcerts(query, Integer.MAX_VALUE).stream()
+        List<ConcertTransportResponse> results = upcomingConcerts(query, normalizeRecommendationLimit(limit)).stream()
                 .map(this::buildResponse)
                 .toList();
 
@@ -106,8 +112,12 @@ public class ConcertTransportService {
         return ConcertTransportResponse.fallback(concert, bestRoutes(availableRoutes));
     }
 
-    private List<TransportRecord> bestAvailableRoutes() {
-        return bestRoutes(currentOrFutureTransports());
+    private int normalizeRecommendationLimit(int limit) {
+        if (limit < MIN_RECOMMENDATION_LIMIT) {
+            return DEFAULT_RECOMMENDATION_LIMIT;
+        }
+
+        return Math.min(limit, MAX_RECOMMENDATION_LIMIT);
     }
 
     private List<TransportRecord> bestRoutes(List<TransportRecord> routes) {

@@ -1,5 +1,6 @@
 package org.ulpgc.paradiso.businessunit.service;
 
+import java.time.LocalDate;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.ulpgc.paradiso.businessunit.datamart.ConcertRecord;
@@ -16,7 +17,7 @@ class ConcertTransportServiceTest {
     @BeforeEach
     void setUp() {
         datamart = new Datamart();
-        service = new ConcertTransportService(datamart);
+        service = new ConcertTransportService(datamart, () -> LocalDate.of(2026, 5, 10));
     }
 
     private ConcertRecord concert(String id, String venueName) {
@@ -42,17 +43,25 @@ class ConcertTransportServiceTest {
                                       String destinationName,
                                       String sourceDestination,
                                       Integer durationMinutes) {
+        return transportOnDate(key, destinationName, sourceDestination, durationMinutes, "2026-06-01");
+    }
+
+    private TransportRecord transportOnDate(String key,
+                                            String destinationName,
+                                            String sourceDestination,
+                                            Integer durationMinutes,
+                                            String date) {
         return new TransportRecord(
                 key,
                 "hash-" + key,
                 "King's Cross",
                 destinationName,
-                "2026-06-01T09:00",
-                "2026-06-01T09:30",
+                date + "T09:00",
+                date + "T09:30",
                 durationMinutes,
                 2,
                 "tube",
-                "2026-06-01",
+                date,
                 "0900",
                 "KingsCross",
                 sourceDestination,
@@ -138,6 +147,7 @@ class ConcertTransportServiceTest {
         assertFalse(response.venueMatch());
         assertEquals(2, response.routes().size());
         assertTrue(response.message().toLowerCase().contains("no se encontraron"));
+        assertTrue(response.message().contains("rutas vigentes disponibles"));
     }
 
     @Test
@@ -553,4 +563,78 @@ class ConcertTransportServiceTest {
         assertEquals("Today Concert", results.get(0).name());
         assertEquals("Future Concert", results.get(1).name());
     }
+
+    @Test
+    void recommendationsForSearchAppliesLimit() {
+        datamart.upsertConcert(new ConcertRecord(
+                "c1", "Example A", "music", "Music", "Rock", "London", "GB",
+                "Venue A", "", "2026-06-01", "18:00:00", "2026-06-01T17:00:00Z",
+                "music", "2026-05-05T10:00:00Z"
+        ));
+        datamart.upsertConcert(new ConcertRecord(
+                "c2", "Example B", "music", "Music", "Rock", "London", "GB",
+                "Venue B", "", "2026-06-02", "19:00:00", "2026-06-02T18:00:00Z",
+                "music", "2026-05-05T10:00:00Z"
+        ));
+        datamart.upsertConcert(new ConcertRecord(
+                "c3", "Example C", "music", "Music", "Rock", "London", "GB",
+                "Venue C", "", "2026-06-03", "20:00:00", "2026-06-03T19:00:00Z",
+                "music", "2026-05-05T10:00:00Z"
+        ));
+
+        ConcertSearchTransportResponse response = service.recommendationsForSearch("example", 2);
+
+        assertTrue(response.found());
+        assertEquals(2, response.matches());
+        assertEquals(2, response.results().size());
+        assertEquals("Example A", response.results().get(0).concert().name());
+        assertEquals("Example B", response.results().get(1).concert().name());
+    }
+
+    @Test
+    void recommendationsForSearchIgnoresPastConcerts() {
+        datamart.upsertConcert(new ConcertRecord(
+                "past", "Example Past", "music", "Music", "Rock", "London", "GB",
+                "Past Venue", "", "2026-05-07", "20:00:00", "2026-05-07T19:00:00Z",
+                "music", "2026-05-05T10:00:00Z"
+        ));
+        datamart.upsertConcert(new ConcertRecord(
+                "today", "Example Today", "music", "Music", "Rock", "London", "GB",
+                "Today Venue", "", "2026-05-10", "20:00:00", "2026-05-10T19:00:00Z",
+                "music", "2026-05-05T10:00:00Z"
+        ));
+        datamart.upsertConcert(new ConcertRecord(
+                "future", "Example Future", "music", "Music", "Rock", "London", "GB",
+                "Future Venue", "", "2026-05-11", "20:00:00", "2026-05-11T19:00:00Z",
+                "music", "2026-05-05T10:00:00Z"
+        ));
+
+        ConcertSearchTransportResponse response = service.recommendationsForSearch("example", 10);
+
+        assertTrue(response.found());
+        assertEquals(2, response.matches());
+        assertEquals("Example Today", response.results().get(0).concert().name());
+        assertEquals("Example Future", response.results().get(1).concert().name());
+    }
+
+    @Test
+    void fallbackMessageExplainsWhenNoCurrentTflRoutesAreAvailable() {
+        datamart.upsertConcert(concert("c1", "Unknown Venue XYZ"));
+        datamart.upsertTransport(transportOnDate(
+                "past-route",
+                "Victoria Station",
+                "Victoria",
+                20,
+                "2026-05-07"
+        ));
+
+        ConcertTransportResponse response = service.transportForConcert("c1");
+
+        assertTrue(response.found());
+        assertFalse(response.venueMatch());
+        assertTrue(response.routes().isEmpty());
+        assertTrue(response.message().contains("No hay rutas TfL vigentes disponibles"));
+        assertTrue(response.message().contains("Ejecuta tfl-module"));
+    }
+
 }
