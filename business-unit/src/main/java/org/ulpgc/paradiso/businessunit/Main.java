@@ -95,7 +95,7 @@ public class Main {
 
     private static void printBanner(BusinessUnitConfig config) {
         System.out.println("╔══════════════════════════════════╗");
-        System.out.println("║     Paradiso — Business Unit     ║");
+        System.out.println("║     Paradiso - Business Unit     ║");
         System.out.println("╚══════════════════════════════════╝");
         System.out.println("[BusinessUnit] Broker:         " + config.getBrokerUrl());
         System.out.println("[BusinessUnit] Client ID:      " + config.getClientId());

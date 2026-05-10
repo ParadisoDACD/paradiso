@@ -4,15 +4,15 @@ import org.ulpgc.paradiso.businessunit.datamart.ConcertRecord;
 import org.ulpgc.paradiso.businessunit.datamart.Datamart;
 import org.ulpgc.paradiso.businessunit.datamart.TransportRecord;
 
+import java.time.LocalDate;
+import java.time.ZoneId;
+import java.time.format.DateTimeParseException;
 import java.util.Arrays;
 import java.util.Comparator;
 import java.util.List;
 import java.util.Set;
-import java.util.stream.Collectors;
-import java.time.LocalDate;
-import java.time.ZoneId;
-import java.time.format.DateTimeParseException;
 import java.util.function.Supplier;
+import java.util.stream.Collectors;
 
 public class ConcertTransportService {
 
@@ -29,21 +29,7 @@ public class ConcertTransportService {
     );
 
     private final Datamart datamart;
-
     private final Supplier<LocalDate> currentDateSupplier;
-
-    private boolean isTodayOrFuture(String localDate) {
-        if (safe(localDate).isBlank()) {
-            return false;
-        }
-
-        try {
-            LocalDate concertDate = LocalDate.parse(localDate);
-            return !concertDate.isBefore(currentDateSupplier.get());
-        } catch (DateTimeParseException exception) {
-            return false;
-        }
-    }
 
     public ConcertTransportService(Datamart datamart) {
         this(datamart, () -> LocalDate.now(LONDON_ZONE));
@@ -75,7 +61,7 @@ public class ConcertTransportService {
         return base.stream()
                 .filter(concert -> isTodayOrFuture(concert.localDate()))
                 .sorted(this::compareConcertsByDate)
-                .limit(limit)
+                .limit(Math.max(0, limit))
                 .toList();
     }
 
@@ -92,7 +78,7 @@ public class ConcertTransportService {
             return ConcertSearchTransportResponse.empty(query);
         }
 
-        List<ConcertTransportResponse> results = searchConcerts(query).stream()
+        List<ConcertTransportResponse> results = upcomingConcerts(query, Integer.MAX_VALUE).stream()
                 .map(this::buildResponse)
                 .toList();
 
@@ -100,30 +86,93 @@ public class ConcertTransportService {
     }
 
     private ConcertTransportResponse buildResponse(ConcertRecord concert) {
+        List<TransportRecord> availableRoutes = currentOrFutureTransports();
         Set<String> keywords = extractKeywords(concert.venueName());
 
         if (keywords.isEmpty()) {
-            return ConcertTransportResponse.fallback(concert, bestAvailableRoutes());
+            return ConcertTransportResponse.fallback(concert, bestRoutes(availableRoutes));
         }
 
-        List<TransportRecord> matched = datamart.transports().stream()
-                .filter(transport -> hasTransportMatch(transport, keywords))
-                .sorted((a, b) -> compareDuration(a.durationMinutes(), b.durationMinutes()))
-                .limit(MAX_ROUTES_PER_CONCERT)
-                .toList();
+        List<TransportRecord> matched = bestRoutes(
+                availableRoutes.stream()
+                        .filter(transport -> hasTransportMatch(transport, keywords))
+                        .toList()
+        );
 
         if (!matched.isEmpty()) {
             return ConcertTransportResponse.matched(concert, matched);
         }
 
-        return ConcertTransportResponse.fallback(concert, bestAvailableRoutes());
+        return ConcertTransportResponse.fallback(concert, bestRoutes(availableRoutes));
     }
 
     private List<TransportRecord> bestAvailableRoutes() {
-        return datamart.transports().stream()
-                .sorted((a, b) -> compareDuration(a.durationMinutes(), b.durationMinutes()))
+        return bestRoutes(currentOrFutureTransports());
+    }
+
+    private List<TransportRecord> bestRoutes(List<TransportRecord> routes) {
+        return routes.stream()
+                .sorted(this::compareRoutes)
                 .limit(MAX_ROUTES_PER_CONCERT)
                 .toList();
+    }
+
+    private List<TransportRecord> currentOrFutureTransports() {
+        return datamart.transports().stream()
+                .filter(this::isRouteTodayOrFuture)
+                .toList();
+    }
+
+    private boolean isTodayOrFuture(String localDate) {
+        if (safe(localDate).isBlank()) {
+            return false;
+        }
+
+        try {
+            LocalDate concertDate = LocalDate.parse(localDate);
+            return !concertDate.isBefore(currentDateSupplier.get());
+        } catch (DateTimeParseException exception) {
+            return false;
+        }
+    }
+
+    private boolean isRouteTodayOrFuture(TransportRecord transport) {
+        LocalDate routeDate = routeDate(transport);
+        return routeDate != null && !routeDate.isBefore(currentDateSupplier.get());
+    }
+
+    private LocalDate routeDate(TransportRecord transport) {
+        LocalDate dateFromStartDateTime = parseDatePrefix(transport.startDateTime());
+
+        if (dateFromStartDateTime != null) {
+            return dateFromStartDateTime;
+        }
+
+        return parseDatePrefix(transport.captureDate());
+    }
+
+    private LocalDate parseDatePrefix(String value) {
+        String safeValue = safe(value);
+
+        if (safeValue.length() < 10) {
+            return null;
+        }
+
+        try {
+            return LocalDate.parse(safeValue.substring(0, 10));
+        } catch (DateTimeParseException exception) {
+            return null;
+        }
+    }
+
+    private int compareRoutes(TransportRecord a, TransportRecord b) {
+        return Comparator
+                .comparing((TransportRecord route) -> route.durationMinutes(), this::compareDuration)
+                .thenComparing(route -> sortableDateTime(route.startDateTime()))
+                .thenComparing(route -> sortableDateTime(route.arrivalDateTime()))
+                .thenComparing(route -> safe(route.originName()))
+                .thenComparing(route -> safe(route.destinationName()))
+                .compare(a, b);
     }
 
     private boolean concertMatches(ConcertRecord concert, String normalizedQuery) {
@@ -208,6 +257,10 @@ public class ConcertTransportService {
 
     private String sortableTime(String value) {
         return safe(value).isBlank() ? "99:99:99" : value;
+    }
+
+    private String sortableDateTime(String value) {
+        return safe(value).isBlank() ? "9999-12-31T99:99:99" : value;
     }
 
     private String normalize(String text) {
