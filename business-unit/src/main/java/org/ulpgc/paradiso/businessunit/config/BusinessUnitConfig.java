@@ -65,4 +65,21 @@ public class BusinessUnitConfig {
                 props.getProperty("subscriber.enabled", "true").trim()
         );
     }
+
+    public long getSubscriberReconnectDelayMillis() {
+        return readLong("subscriber.reconnect.delay.ms", 5_000L);
+    }
+
+    public long getSubscriberReconnectMaxDelayMillis() {
+        return readLong("subscriber.reconnect.max.delay.ms", 30_000L);
+    }
+
+    private long readLong(String key, long defaultValue) {
+        try {
+            return Long.parseLong(props.getProperty(key, Long.toString(defaultValue)).trim());
+        } catch (NumberFormatException e) {
+            System.err.println("[BusinessUnit] " + key + " inválido, usando " + defaultValue);
+            return defaultValue;
+        }
+    }
 }

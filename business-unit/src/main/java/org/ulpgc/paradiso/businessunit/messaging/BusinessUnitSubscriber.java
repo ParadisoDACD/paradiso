@@ -22,11 +22,24 @@ public class BusinessUnitSubscriber implements AutoCloseable {
                                   String clientId,
                                   List<String> topicNames,
                                   BusinessEventProcessor processor) throws JMSException {
+        this(brokerUrl, clientId, topicNames, processor, () -> {
+        });
+    }
+
+    public BusinessUnitSubscriber(String brokerUrl,
+                                  String clientId,
+                                  List<String> topicNames,
+                                  BusinessEventProcessor processor,
+                                  Runnable connectionLostHandler) throws JMSException {
 
         ActiveMQConnectionFactory factory = new ActiveMQConnectionFactory(brokerUrl);
 
         this.connection = factory.createConnection();
         this.connection.setClientID(clientId);
+        this.connection.setExceptionListener(exception -> {
+            System.err.println("[BusinessUnit] Conexión JMS interrumpida: " + exception.getMessage());
+            connectionLostHandler.run();
+        });
 
         this.session = connection.createSession(false, Session.AUTO_ACKNOWLEDGE);
 

@@ -18,3 +18,9 @@ api.port=7000
 # false: solo datos históricos
 # true:  consumo real-time desde ActiveMQ
 subscriber.enabled=true
+
+# Reconexión automática del subscriber real-time
+# delay.ms: espera inicial entre intentos de reconexión
+# max.delay.ms: espera máxima cuando hay varios fallos consecutivos
+subscriber.reconnect.delay.ms=5000
+subscriber.reconnect.max.delay.ms=30000

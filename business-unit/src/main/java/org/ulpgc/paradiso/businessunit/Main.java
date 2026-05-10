@@ -5,7 +5,7 @@ import org.ulpgc.paradiso.businessunit.config.BusinessUnitConfig;
 import org.ulpgc.paradiso.businessunit.datamart.Datamart;
 import org.ulpgc.paradiso.businessunit.event.BusinessEventProcessor;
 import org.ulpgc.paradiso.businessunit.loader.EventStoreLoader;
-import org.ulpgc.paradiso.businessunit.messaging.BusinessUnitSubscriber;
+import org.ulpgc.paradiso.businessunit.messaging.ReconnectingBusinessUnitSubscriber;
 import org.ulpgc.paradiso.businessunit.service.ConcertTransportService;
 
 import java.util.concurrent.CountDownLatch;
@@ -34,7 +34,7 @@ public class Main {
                 + datamart.transportCount() + " rutas. "
                 + "Líneas leídas del event store: " + loaded);
 
-        BusinessUnitSubscriber subscriber = tryStartSubscriber(config, processor);
+        ReconnectingBusinessUnitSubscriber subscriber = startSubscriberManager(config, processor);
 
         ConcertTransportService service = new ConcertTransportService(datamart);
         RestApi api = new RestApi(datamart, service, config.getApiPort());
@@ -57,40 +57,25 @@ public class Main {
         latch.await();
     }
 
-    private static BusinessUnitSubscriber tryStartSubscriber(BusinessUnitConfig config,
-                                                             BusinessEventProcessor processor) {
+    private static ReconnectingBusinessUnitSubscriber startSubscriberManager(BusinessUnitConfig config,
+                                                                             BusinessEventProcessor processor) {
         if (!config.isSubscriberEnabled()) {
             System.out.println("[BusinessUnit] Subscriber deshabilitado (subscriber.enabled=false).");
             System.out.println("[BusinessUnit] La API funcionará solo con datos históricos.");
             return null;
         }
 
-        for (int attempt = 1; attempt <= 5; attempt++) {
-            try {
-                return new BusinessUnitSubscriber(
-                        config.getBrokerUrl(),
-                        config.getClientId(),
-                        config.getTopics(),
-                        processor
-                );
-            } catch (Exception e) {
-                System.err.println("[BusinessUnit] No se pudo conectar a ActiveMQ. Intento "
-                        + attempt + "/5: " + e.getMessage());
+        ReconnectingBusinessUnitSubscriber subscriber = new ReconnectingBusinessUnitSubscriber(
+                config.getBrokerUrl(),
+                config.getClientId(),
+                config.getTopics(),
+                processor,
+                config.getSubscriberReconnectDelayMillis(),
+                config.getSubscriberReconnectMaxDelayMillis()
+        );
 
-                if (attempt < 5) {
-                    try {
-                        Thread.sleep(5_000);
-                    } catch (InterruptedException interrupted) {
-                        Thread.currentThread().interrupt();
-                        break;
-                    }
-                }
-            }
-        }
-
-        System.err.println("[BusinessUnit] ActiveMQ no disponible. "
-                + "La REST API funcionará con los datos históricos cargados.");
-        return null;
+        subscriber.start();
+        return subscriber;
     }
 
     private static void printBanner(BusinessUnitConfig config) {
