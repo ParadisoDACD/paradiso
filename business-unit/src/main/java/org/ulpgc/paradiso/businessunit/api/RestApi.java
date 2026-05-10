@@ -13,6 +13,9 @@ import java.util.Map;
 
 public class RestApi {
 
+    private static final int DEFAULT_CONCERT_LIMIT = 10;
+    private static final int MAX_CONCERT_LIMIT = 50;
+
     private final Datamart datamart;
     private final ConcertTransportService service;
     private final int port;
@@ -34,13 +37,20 @@ public class RestApi {
         app.get("/", ctx -> json(ctx, Map.of(
                 "application", "Paradiso Business Unit",
                 "description", "Conciertos en Londres y rutas TfL al venue",
+                "userFlow", Map.of(
+                        "1", "GET /concerts/upcoming",
+                        "2", "Elegir externalEventId",
+                        "3", "GET /recommendations/{externalEventId}"
+                ),
                 "endpoints", Map.of(
                         "status", "/status",
                         "concerts", "/concerts",
+                        "upcomingConcerts", "/concerts/upcoming",
                         "concertSearch", "/concerts?query={text}",
                         "transport", "/transport",
                         "route", "/concerts/{id}/transport",
-                        "recommendations", "/recommendations?query={text}"
+                        "recommendationsBySearch", "/recommendations?query={text}",
+                        "recommendationsById", "/recommendations/{id}"
                 )
         )));
 
@@ -59,6 +69,15 @@ public class RestApi {
             }
 
             json(ctx, service.searchConcerts(query));
+        });
+
+        /*
+         * Debe declararse antes de /concerts/{id}.
+         */
+        app.get("/concerts/upcoming", ctx -> {
+            String query = ctx.queryParam("query");
+            int limit = parseLimit(ctx.queryParam("limit"));
+            json(ctx, service.upcomingConcerts(query, limit));
         });
 
         app.get("/concerts/{id}", ctx -> {
@@ -98,6 +117,17 @@ public class RestApi {
             json(ctx, response);
         });
 
+        app.get("/recommendations/{id}", ctx -> {
+            String id = ctx.pathParam("id");
+            ConcertTransportResponse response = service.transportForConcert(id);
+
+            if (!response.found()) {
+                ctx.status(404);
+            }
+
+            json(ctx, response);
+        });
+
         app.get("/transport", ctx -> json(ctx, datamart.transports()));
 
         System.out.println("[BusinessUnit] REST API disponible en http://localhost:" + port);
@@ -105,15 +135,34 @@ public class RestApi {
         System.out.println("  GET /status");
         System.out.println("  GET /concerts");
         System.out.println("  GET /concerts?query={text}");
+        System.out.println("  GET /concerts/upcoming");
+        System.out.println("  GET /concerts/upcoming?query={text}&limit={n}");
         System.out.println("  GET /concerts/{id}");
         System.out.println("  GET /concerts/{id}/transport");
         System.out.println("  GET /recommendations?query={text}");
+        System.out.println("  GET /recommendations/{id}");
         System.out.println("  GET /transport");
     }
 
     public void stop() {
         if (app != null) {
             app.stop();
+        }
+    }
+
+    private int parseLimit(String rawLimit) {
+        if (rawLimit == null || rawLimit.isBlank()) {
+            return DEFAULT_CONCERT_LIMIT;
+        }
+
+        try {
+            int parsed = Integer.parseInt(rawLimit);
+            if (parsed <= 0) {
+                return DEFAULT_CONCERT_LIMIT;
+            }
+            return Math.min(parsed, MAX_CONCERT_LIMIT);
+        } catch (NumberFormatException exception) {
+            return DEFAULT_CONCERT_LIMIT;
         }
     }
 

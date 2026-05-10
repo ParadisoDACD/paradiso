@@ -388,4 +388,169 @@ class ConcertTransportServiceTest {
         assertEquals(1, response.routes().get(0).durationMinutes());
         assertEquals(10, response.routes().get(9).durationMinutes());
     }
+
+    @Test
+    void upcomingConcertsReturnsSortedAndLimitedConcerts() {
+        datamart.upsertConcert(new ConcertRecord(
+                "c3", "Late Concert", "music", "Music", "Rock", "London", "GB",
+                "Venue C", "", "2026-06-03", "20:00:00", "2026-06-03T19:00:00Z",
+                "music", "2026-05-05T10:00:00Z"
+        ));
+        datamart.upsertConcert(new ConcertRecord(
+                "c1", "Early Concert", "music", "Music", "Rock", "London", "GB",
+                "Venue A", "", "2026-06-01", "18:00:00", "2026-06-01T17:00:00Z",
+                "music", "2026-05-05T10:00:00Z"
+        ));
+        datamart.upsertConcert(new ConcertRecord(
+                "c2", "Middle Concert", "music", "Music", "Rock", "London", "GB",
+                "Venue B", "", "2026-06-02", "19:00:00", "2026-06-02T18:00:00Z",
+                "music", "2026-05-05T10:00:00Z"
+        ));
+
+        var results = service.upcomingConcerts("", 2);
+
+        assertEquals(2, results.size());
+        assertEquals("Early Concert", results.get(0).name());
+        assertEquals("Middle Concert", results.get(1).name());
+    }
+
+    @Test
+    void upcomingConcertsCanFilterByQuery() {
+        datamart.upsertConcert(new ConcertRecord(
+                "c1", "Tame Impala", "music", "Music", "Rock", "London", "GB",
+                "The O2", "", "2026-06-01", "18:00:00", "2026-06-01T17:00:00Z",
+                "music", "2026-05-05T10:00:00Z"
+        ));
+        datamart.upsertConcert(new ConcertRecord(
+                "c2", "Example", "music", "Music", "Rock", "London", "GB",
+                "O2 Academy Brixton", "", "2026-06-02", "19:00:00", "2026-06-02T18:00:00Z",
+                "music", "2026-05-05T10:00:00Z"
+        ));
+
+        var results = service.upcomingConcerts("tame", 10);
+
+        assertEquals(1, results.size());
+        assertEquals("Tame Impala", results.get(0).name());
+    }
+
+    @Test
+    void transportForConcertMatchesTheO2WithO2ArenaRoutes() {
+        datamart.upsertConcert(new ConcertRecord(
+                "c1",
+                "Tame Impala",
+                "music",
+                "Music",
+                "Rock",
+                "London",
+                "GB",
+                "The O2",
+                "",
+                "2026-06-01",
+                "20:00",
+                "2026-06-01T19:00:00Z",
+                "music",
+                "2026-05-05T10:00:00Z"
+        ));
+
+        datamart.upsertTransport(transport("o2-1", "North Greenwich Underground Station", "O2Arena", 25));
+        datamart.upsertTransport(transport("brixton-1", "Brixton Underground Station", "BrixtonAcademy", 11));
+
+        ConcertTransportResponse response = service.transportForConcert("c1");
+
+        assertTrue(response.found());
+        assertTrue(response.venueMatch());
+        assertEquals(1, response.routes().size());
+        assertEquals("North Greenwich Underground Station", response.routes().get(0).destinationName());
+    }
+
+    @Test
+    void transportForConcertDoesNotConfuseO2AcademyBrixtonWithTheO2Arena() {
+        datamart.upsertConcert(new ConcertRecord(
+                "c1",
+                "Example",
+                "music",
+                "Music",
+                "Rock",
+                "London",
+                "GB",
+                "O2 Academy Brixton",
+                "",
+                "2026-06-01",
+                "20:00",
+                "2026-06-01T19:00:00Z",
+                "music",
+                "2026-05-05T10:00:00Z"
+        ));
+
+        datamart.upsertTransport(transport("o2-1", "North Greenwich Underground Station", "O2Arena", 5));
+        datamart.upsertTransport(transport("brixton-1", "Brixton Underground Station", "BrixtonAcademy", 11));
+
+        ConcertTransportResponse response = service.transportForConcert("c1");
+
+        assertTrue(response.found());
+        assertTrue(response.venueMatch());
+        assertEquals(1, response.routes().size());
+        assertEquals("Brixton Underground Station", response.routes().get(0).destinationName());
+    }
+
+    @Test
+    void transportForConcertMatchesIndigoAtTheO2WithO2ArenaRoutes() {
+        datamart.upsertConcert(new ConcertRecord(
+                "c1",
+                "Hindley Street Country Club",
+                "music",
+                "Music",
+                "Rock",
+                "London",
+                "GB",
+                "indigo at The O2",
+                "",
+                "2026-06-01",
+                "20:00",
+                "2026-06-01T19:00:00Z",
+                "music",
+                "2026-05-05T10:00:00Z"
+        ));
+
+        datamart.upsertTransport(transport("o2-1", "North Greenwich Underground Station", "O2Arena", 25));
+
+        ConcertTransportResponse response = service.transportForConcert("c1");
+
+        assertTrue(response.found());
+        assertTrue(response.venueMatch());
+        assertEquals(1, response.routes().size());
+        assertEquals("North Greenwich Underground Station", response.routes().get(0).destinationName());
+    }
+
+    @Test
+    void upcomingConcertsDoesNotReturnPastConcerts() {
+        ConcertTransportService fixedDateService = new ConcertTransportService(
+                datamart,
+                () -> java.time.LocalDate.of(2026, 5, 10)
+        );
+
+        datamart.upsertConcert(new ConcertRecord(
+                "past", "Past Concert", "music", "Music", "Rock", "London", "GB",
+                "Past Venue", "", "2026-05-07", "20:00:00", "2026-05-07T19:00:00Z",
+                "music", "2026-05-05T10:00:00Z"
+        ));
+
+        datamart.upsertConcert(new ConcertRecord(
+                "today", "Today Concert", "music", "Music", "Rock", "London", "GB",
+                "Today Venue", "", "2026-05-10", "20:00:00", "2026-05-10T19:00:00Z",
+                "music", "2026-05-05T10:00:00Z"
+        ));
+
+        datamart.upsertConcert(new ConcertRecord(
+                "future", "Future Concert", "music", "Music", "Rock", "London", "GB",
+                "Future Venue", "", "2026-05-11", "20:00:00", "2026-05-11T19:00:00Z",
+                "music", "2026-05-05T10:00:00Z"
+        ));
+
+        var results = fixedDateService.upcomingConcerts("", 10);
+
+        assertEquals(2, results.size());
+        assertEquals("Today Concert", results.get(0).name());
+        assertEquals("Future Concert", results.get(1).name());
+    }
 }

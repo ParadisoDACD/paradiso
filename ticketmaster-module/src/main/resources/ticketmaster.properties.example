@@ -3,7 +3,7 @@ api.key=
 countries=GB
 cities=London
 categories=music,festival
-lookahead.days=14
+lookahead.days=60
 capture.period.minutes=60
 sqlite.path=data/ticketmaster.db
 
