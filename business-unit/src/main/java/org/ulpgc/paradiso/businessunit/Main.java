@@ -1,7 +1,100 @@
 package org.ulpgc.paradiso.businessunit;
 
+import org.ulpgc.paradiso.businessunit.config.BusinessUnitConfig;
+import org.ulpgc.paradiso.businessunit.datamart.Datamart;
+import org.ulpgc.paradiso.businessunit.event.BusinessEventProcessor;
+import org.ulpgc.paradiso.businessunit.loader.EventStoreLoader;
+import org.ulpgc.paradiso.businessunit.messaging.BusinessUnitSubscriber;
+
+import java.util.concurrent.CountDownLatch;
+
 public class Main {
-    public static void main(String[] args) {
-        System.out.println("[BusinessUnit] Módulo inicializado. Sprint 3 en progreso.");
+
+    public static void main(String[] args) throws Exception {
+        BusinessUnitConfig config = new BusinessUnitConfig();
+        printBanner(config);
+
+        Datamart datamart = new Datamart();
+        BusinessEventProcessor processor = new BusinessEventProcessor(datamart);
+
+        System.out.println("[BusinessUnit] Iniciando carga histórica desde event store...");
+
+        EventStoreLoader loader = new EventStoreLoader(
+                config.getEventstorePath(),
+                config.getTopics(),
+                processor
+        );
+
+        int loaded = loader.loadAll();
+
+        System.out.println("[BusinessUnit] Datamart inicial: "
+                + datamart.concertCount() + " conciertos, "
+                + datamart.transportCount() + " rutas. "
+                + "Líneas leídas del event store: " + loaded);
+
+        BusinessUnitSubscriber subscriber = tryStartSubscriber(config, processor);
+
+        CountDownLatch latch = new CountDownLatch(1);
+
+        Runtime.getRuntime().addShutdownHook(new Thread(() -> {
+            System.out.println("[BusinessUnit] Señal de parada recibida. Cerrando...");
+
+            if (subscriber != null) {
+                subscriber.close();
+            }
+
+            latch.countDown();
+        }));
+
+        System.out.println("[BusinessUnit] Sistema listo. Presiona Ctrl+C para detener.");
+        latch.await();
+    }
+
+    private static BusinessUnitSubscriber tryStartSubscriber(BusinessUnitConfig config,
+                                                             BusinessEventProcessor processor) {
+        if (!config.isSubscriberEnabled()) {
+            System.out.println("[BusinessUnit] Subscriber deshabilitado (subscriber.enabled=false).");
+            System.out.println("[BusinessUnit] El módulo funcionará solo con datos históricos.");
+            return null;
+        }
+
+        for (int attempt = 1; attempt <= 5; attempt++) {
+            try {
+                return new BusinessUnitSubscriber(
+                        config.getBrokerUrl(),
+                        config.getClientId(),
+                        config.getTopics(),
+                        processor
+                );
+            } catch (Exception e) {
+                System.err.println("[BusinessUnit] No se pudo conectar a ActiveMQ. Intento "
+                        + attempt + "/5: " + e.getMessage());
+
+                if (attempt < 5) {
+                    try {
+                        Thread.sleep(5_000);
+                    } catch (InterruptedException interrupted) {
+                        Thread.currentThread().interrupt();
+                        break;
+                    }
+                }
+            }
+        }
+
+        System.err.println("[BusinessUnit] ActiveMQ no disponible. "
+                + "El módulo continuará solo con los datos históricos cargados.");
+        return null;
+    }
+
+    private static void printBanner(BusinessUnitConfig config) {
+        System.out.println("╔═════════════════════════════════════════╗");
+        System.out.println("║   Paradiso — Business Unit  (Sprint 3)  ║");
+        System.out.println("╚═════════════════════════════════════════╝");
+        System.out.println("[BusinessUnit] Broker:         " + config.getBrokerUrl());
+        System.out.println("[BusinessUnit] Client ID:      " + config.getClientId());
+        System.out.println("[BusinessUnit] Topics:         " + config.getTopics());
+        System.out.println("[BusinessUnit] Event Store:    " + config.getEventstorePath());
+        System.out.println("[BusinessUnit] API port:       " + config.getApiPort());
+        System.out.println("[BusinessUnit] Subscriber:     " + config.isSubscriberEnabled());
     }
 }
