@@ -1,10 +1,12 @@
 package org.ulpgc.paradiso.businessunit;
 
+import org.ulpgc.paradiso.businessunit.api.RestApi;
 import org.ulpgc.paradiso.businessunit.config.BusinessUnitConfig;
 import org.ulpgc.paradiso.businessunit.datamart.Datamart;
 import org.ulpgc.paradiso.businessunit.event.BusinessEventProcessor;
 import org.ulpgc.paradiso.businessunit.loader.EventStoreLoader;
 import org.ulpgc.paradiso.businessunit.messaging.BusinessUnitSubscriber;
+import org.ulpgc.paradiso.businessunit.service.ConcertTransportService;
 
 import java.util.concurrent.CountDownLatch;
 
@@ -34,6 +36,10 @@ public class Main {
 
         BusinessUnitSubscriber subscriber = tryStartSubscriber(config, processor);
 
+        ConcertTransportService service = new ConcertTransportService(datamart);
+        RestApi api = new RestApi(datamart, service, config.getApiPort());
+        api.start();
+
         CountDownLatch latch = new CountDownLatch(1);
 
         Runtime.getRuntime().addShutdownHook(new Thread(() -> {
@@ -43,6 +49,7 @@ public class Main {
                 subscriber.close();
             }
 
+            api.stop();
             latch.countDown();
         }));
 
@@ -54,7 +61,7 @@ public class Main {
                                                              BusinessEventProcessor processor) {
         if (!config.isSubscriberEnabled()) {
             System.out.println("[BusinessUnit] Subscriber deshabilitado (subscriber.enabled=false).");
-            System.out.println("[BusinessUnit] El módulo funcionará solo con datos históricos.");
+            System.out.println("[BusinessUnit] La API funcionará solo con datos históricos.");
             return null;
         }
 
@@ -82,14 +89,14 @@ public class Main {
         }
 
         System.err.println("[BusinessUnit] ActiveMQ no disponible. "
-                + "El módulo continuará solo con los datos históricos cargados.");
+                + "La REST API funcionará con los datos históricos cargados.");
         return null;
     }
 
     private static void printBanner(BusinessUnitConfig config) {
-        System.out.println("╔═════════════════════════════════════════╗");
-        System.out.println("║   Paradiso — Business Unit  (Sprint 3)  ║");
-        System.out.println("╚═════════════════════════════════════════╝");
+        System.out.println("╔══════════════════════════════════╗");
+        System.out.println("║     Paradiso — Business Unit     ║");
+        System.out.println("╚══════════════════════════════════╝");
         System.out.println("[BusinessUnit] Broker:         " + config.getBrokerUrl());
         System.out.println("[BusinessUnit] Client ID:      " + config.getClientId());
         System.out.println("[BusinessUnit] Topics:         " + config.getTopics());
