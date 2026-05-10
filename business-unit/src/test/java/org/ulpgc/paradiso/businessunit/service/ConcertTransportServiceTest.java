@@ -314,4 +314,78 @@ class ConcertTransportServiceTest {
         assertFalse(response.results().get(0).venueMatch());
         assertEquals(1, response.results().get(0).routes().size());
     }
+
+    @Test
+    void transportForConcertLimitsMatchedRoutesToTenBestOptions() {
+        datamart.upsertConcert(new ConcertRecord(
+                "c1",
+                "Example",
+                "music",
+                "Music",
+                "Rock",
+                "London",
+                "GB",
+                "O2 Academy Brixton",
+                "",
+                "2026-06-01",
+                "20:00",
+                "2026-06-01T19:00:00Z",
+                "music",
+                "2026-05-05T10:00:00Z"
+        ));
+
+        for (int i = 1; i <= 12; i++) {
+            datamart.upsertTransport(transport(
+                    "brixton-" + i,
+                    "Brixton Underground Station",
+                    "BrixtonAcademy",
+                    i
+            ));
+        }
+
+        ConcertTransportResponse response = service.transportForConcert("c1");
+
+        assertTrue(response.found());
+        assertTrue(response.venueMatch());
+        assertEquals(10, response.routes().size());
+        assertEquals(1, response.routes().get(0).durationMinutes());
+        assertEquals(10, response.routes().get(9).durationMinutes());
+    }
+
+    @Test
+    void transportForConcertLimitsFallbackRoutesToTenBestOptions() {
+        datamart.upsertConcert(new ConcertRecord(
+                "c1",
+                "Chase and Status",
+                "music",
+                "Music",
+                "Pop",
+                "London",
+                "GB",
+                "Magazine",
+                "",
+                "2026-06-01",
+                "20:00",
+                "2026-06-01T19:00:00Z",
+                "music",
+                "2026-05-05T10:00:00Z"
+        ));
+
+        for (int i = 1; i <= 12; i++) {
+            datamart.upsertTransport(transport(
+                    "route-" + i,
+                    "Generic Destination " + i,
+                    "GenericDestination" + i,
+                    i
+            ));
+        }
+
+        ConcertTransportResponse response = service.transportForConcert("c1");
+
+        assertTrue(response.found());
+        assertFalse(response.venueMatch());
+        assertEquals(10, response.routes().size());
+        assertEquals(1, response.routes().get(0).durationMinutes());
+        assertEquals(10, response.routes().get(9).durationMinutes());
+    }
 }

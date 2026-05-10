@@ -11,6 +11,8 @@ import java.util.stream.Collectors;
 
 public class ConcertTransportService {
 
+    private static final int MAX_ROUTES_PER_CONCERT = 10;
+
     private static final Set<String> STOPWORDS = Set.of(
             "the", "and", "for", "with", "from",
             "london", "venue", "arena", "academy", "hall",
@@ -61,19 +63,27 @@ public class ConcertTransportService {
         Set<String> keywords = extractKeywords(concert.venueName());
 
         if (keywords.isEmpty()) {
-            return ConcertTransportResponse.fallback(concert, datamart.transports());
+            return ConcertTransportResponse.fallback(concert, bestAvailableRoutes());
         }
 
         List<TransportRecord> matched = datamart.transports().stream()
                 .filter(transport -> hasTransportMatch(transport, keywords))
                 .sorted((a, b) -> compareDuration(a.durationMinutes(), b.durationMinutes()))
+                .limit(MAX_ROUTES_PER_CONCERT)
                 .toList();
 
         if (!matched.isEmpty()) {
             return ConcertTransportResponse.matched(concert, matched);
         }
 
-        return ConcertTransportResponse.fallback(concert, datamart.transports());
+        return ConcertTransportResponse.fallback(concert, bestAvailableRoutes());
+    }
+
+    private List<TransportRecord> bestAvailableRoutes() {
+        return datamart.transports().stream()
+                .sorted((a, b) -> compareDuration(a.durationMinutes(), b.durationMinutes()))
+                .limit(MAX_ROUTES_PER_CONCERT)
+                .toList();
     }
 
     private boolean concertMatches(ConcertRecord concert, String normalizedQuery) {
