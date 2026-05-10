@@ -5,6 +5,7 @@ import io.javalin.Javalin;
 import io.javalin.http.Context;
 import org.ulpgc.paradiso.businessunit.datamart.Datamart;
 import org.ulpgc.paradiso.businessunit.datamart.DatamartStatus;
+import org.ulpgc.paradiso.businessunit.service.ConcertSearchTransportResponse;
 import org.ulpgc.paradiso.businessunit.service.ConcertTransportResponse;
 import org.ulpgc.paradiso.businessunit.service.ConcertTransportService;
 
@@ -36,8 +37,10 @@ public class RestApi {
                 "endpoints", Map.of(
                         "status", "/status",
                         "concerts", "/concerts",
+                        "concertSearch", "/concerts?query={text}",
                         "transport", "/transport",
-                        "route", "/concerts/{id}/transport"
+                        "route", "/concerts/{id}/transport",
+                        "recommendations", "/recommendations?query={text}"
                 )
         )));
 
@@ -47,7 +50,16 @@ public class RestApi {
                 datamart.lastProcessedAt()
         )));
 
-        app.get("/concerts", ctx -> json(ctx, datamart.concerts()));
+        app.get("/concerts", ctx -> {
+            String query = ctx.queryParam("query");
+
+            if (isBlank(query)) {
+                json(ctx, datamart.concerts());
+                return;
+            }
+
+            json(ctx, service.searchConcerts(query));
+        });
 
         app.get("/concerts/{id}", ctx -> {
             String id = ctx.pathParam("id");
@@ -69,16 +81,44 @@ public class RestApi {
             json(ctx, response);
         });
 
+        app.get("/recommendations", ctx -> {
+            String query = ctx.queryParam("query");
+
+            if (isBlank(query)) {
+                jsonError(ctx, 400, "Debe indicarse el parámetro query. Ejemplo: /recommendations?query=example");
+                return;
+            }
+
+            ConcertSearchTransportResponse response = service.recommendationsForSearch(query);
+
+            if (!response.found()) {
+                ctx.status(404);
+            }
+
+            json(ctx, response);
+        });
+
         app.get("/transport", ctx -> json(ctx, datamart.transports()));
 
         System.out.println("[BusinessUnit] REST API disponible en http://localhost:" + port);
-        System.out.println("[BusinessUnit] Endpoints: GET /status | /concerts | /transport | /concerts/{id}/transport");
+        System.out.println("[BusinessUnit] Endpoints:");
+        System.out.println("  GET /status");
+        System.out.println("  GET /concerts");
+        System.out.println("  GET /concerts?query={text}");
+        System.out.println("  GET /concerts/{id}");
+        System.out.println("  GET /concerts/{id}/transport");
+        System.out.println("  GET /recommendations?query={text}");
+        System.out.println("  GET /transport");
     }
 
     public void stop() {
         if (app != null) {
             app.stop();
         }
+    }
+
+    private boolean isBlank(String value) {
+        return value == null || value.isBlank();
     }
 
     private void json(Context ctx, Object object) {

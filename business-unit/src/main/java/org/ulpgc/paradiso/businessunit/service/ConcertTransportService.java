@@ -25,10 +25,36 @@ public class ConcertTransportService {
         this.datamart = datamart;
     }
 
+    public List<ConcertRecord> searchConcerts(String query) {
+        String normalizedQuery = normalize(query);
+
+        if (normalizedQuery.isBlank()) {
+            return datamart.concerts();
+        }
+
+        return datamart.concerts().stream()
+                .filter(concert -> concertMatches(concert, normalizedQuery))
+                .toList();
+    }
+
     public ConcertTransportResponse transportForConcert(String concertId) {
         return datamart.concertById(concertId)
                 .map(this::buildResponse)
                 .orElseGet(() -> ConcertTransportResponse.notFound(concertId));
+    }
+
+    public ConcertSearchTransportResponse recommendationsForSearch(String query) {
+        String normalizedQuery = normalize(query);
+
+        if (normalizedQuery.isBlank()) {
+            return ConcertSearchTransportResponse.empty(query);
+        }
+
+        List<ConcertTransportResponse> results = searchConcerts(query).stream()
+                .map(this::buildResponse)
+                .toList();
+
+        return ConcertSearchTransportResponse.of(query, results);
     }
 
     private ConcertTransportResponse buildResponse(ConcertRecord concert) {
@@ -39,7 +65,7 @@ public class ConcertTransportService {
         }
 
         List<TransportRecord> matched = datamart.transports().stream()
-                .filter(transport -> hasMatch(transport, keywords))
+                .filter(transport -> hasTransportMatch(transport, keywords))
                 .sorted((a, b) -> compareDuration(a.durationMinutes(), b.durationMinutes()))
                 .toList();
 
@@ -50,9 +76,24 @@ public class ConcertTransportService {
         return ConcertTransportResponse.fallback(concert, datamart.transports());
     }
 
-    private boolean hasMatch(TransportRecord transport, Set<String> keywords) {
+    private boolean concertMatches(ConcertRecord concert, String normalizedQuery) {
+        String target = normalize(String.join(" ",
+                safe(concert.externalEventId()),
+                safe(concert.name()),
+                safe(concert.classificationName()),
+                safe(concert.segment()),
+                safe(concert.genre()),
+                safe(concert.city()),
+                safe(concert.venueName()),
+                safe(concert.localDate())
+        ));
+
+        return target.contains(normalizedQuery);
+    }
+
+    private boolean hasTransportMatch(TransportRecord transport, Set<String> keywords) {
         String searchTarget = normalize(
-                transport.destinationName() + " " + transport.sourceDestination()
+                safe(transport.destinationName()) + " " + safe(transport.sourceDestination())
         );
 
         return keywords.stream().anyMatch(searchTarget::contains);
@@ -74,6 +115,10 @@ public class ConcertTransportService {
                 .replaceAll("[^a-z0-9 ]", " ")
                 .replaceAll("\\s+", " ")
                 .trim();
+    }
+
+    private String safe(String value) {
+        return value == null ? "" : value;
     }
 
     private int compareDuration(Integer a, Integer b) {
