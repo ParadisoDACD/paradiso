@@ -1,0 +1,20 @@
+# Broker ActiveMQ
+broker.url=tcp://localhost:61616
+
+# Client ID durable
+client.id=paradiso-business-unit
+
+# Topics a consumir
+topics=TicketmasterEvent,TflJourney
+
+# Ruta al event store generado por eventstore-builder-module
+# Relativa al directorio desde el que se ejecuta el JAR
+eventstore.path=eventstore
+
+# Puerto de la REST API
+api.port=7000
+
+# Habilitar/deshabilitar subscriber real-time
+# false: solo datos históricos
+# true:  consumo real-time desde ActiveMQ
+subscriber.enabled=true

@@ -55,3 +55,6 @@ tfl.properties
 eventstore/
 eventstore-builder.properties
 dependency-reduced-pom.xml
+
+### Business Unit
+business-unit.properties

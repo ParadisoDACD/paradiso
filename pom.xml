@@ -15,6 +15,7 @@
         <module>ticketmaster-module</module>
         <module>tfl-module</module>
         <module>eventstore-builder-module</module>
+        <module>business-unit</module>
     </modules>
 
     <properties>
