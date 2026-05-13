@@ -57,7 +57,7 @@ public class Main {
 
             TflController controller = new TflController(
                     config,
-                    new TflJourneyFeeder(config.getAppKey()),
+                    new TflJourneyFeeder(config),
                     new TflJourneyMapper(),
                     publisher,
                     new TflBrokerEventSerializer(config.getSourceSystem())

@@ -1,37 +1,13 @@
 package org.ulpgc.paradiso.tfl.feeder;
 
-<<<<<<< Updated upstream
-import java.util.HashMap;
-=======
 import java.util.Collections;
 import java.util.HashMap;
 import java.util.LinkedHashMap;
 import java.util.Locale;
->>>>>>> Stashed changes
 import java.util.Map;
 
 public class TflVenueResolver {
 
-<<<<<<< Updated upstream
-    private static final Map<String, String> NAPTAN_IDS = new HashMap<>();
-
-    static {
-        NAPTAN_IDS.put("KingsCross",   "940GZZLUKSX");
-        NAPTAN_IDS.put("Victoria",     "940GZZLUVIC");
-        NAPTAN_IDS.put("Waterloo",     "940GZZLUWLO");
-        NAPTAN_IDS.put("Paddington",   "940GZZLUPAC");
-        NAPTAN_IDS.put("LondonBridge", "940GZZLULNB");
-
-        NAPTAN_IDS.put("O2Arena",          "940GZZLUNGW");
-        NAPTAN_IDS.put("WembleyPark",      "940GZZLUWYP");
-        NAPTAN_IDS.put("RoyalAlbertHall",  "940GZZLUHSK");
-        NAPTAN_IDS.put("BrixtonAcademy",   "940GZZLUBXN");
-        NAPTAN_IDS.put("AlexandraPalace",  "910GALEXNDP");
-    }
-
-    public static String resolve(String logicalName) {
-        String id = NAPTAN_IDS.get(logicalName);
-=======
     private static final Map<String, String> NAPTAN_IDS = new LinkedHashMap<>();
     private static final Map<String, String> NORMALIZED_TO_LOGICAL_NAME = new HashMap<>();
 
@@ -135,16 +111,11 @@ public class TflVenueResolver {
     public static String resolve(String logicalName) {
         String id = resolveOrNull(logicalName);
 
->>>>>>> Stashed changes
         if (id == null) {
             throw new IllegalArgumentException(
                     "Nombre '" + logicalName + "' sin NaPTAN ID en TflVenueResolver. " +
                             "Buscalo en la API y añadelo al mapa.");
         }
-<<<<<<< Updated upstream
-        return id;
-    }
-=======
 
         return id;
     }
@@ -188,5 +159,4 @@ public class TflVenueResolver {
         return value.toLowerCase(Locale.ROOT)
                 .replaceAll("[^a-z0-9]", "");
     }
->>>>>>> Stashed changes
 }

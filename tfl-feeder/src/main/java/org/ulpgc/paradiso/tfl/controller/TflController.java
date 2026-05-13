@@ -61,7 +61,7 @@ public class TflController {
         int totalRequests = 0;
 
         for (int dayOffset = startDayOffset; dayOffset < startDayOffset + daysAhead; dayOffset++) {
-            LocalDate date = LocalDate.now().plusDays(dayOffset);
+            LocalDate date = baseDate.plusDays(dayOffset);
             String dateStr = date.format(TFL_DATE_FORMAT);
             String captureDateIso = date.toString();
 
@@ -114,6 +114,10 @@ public class TflController {
                                 captureTime.trim(),
                                 journeys.size());
 
+                    } catch (InterruptedException e) {
+                        Thread.currentThread().interrupt();
+                        System.err.println("[TfL] Captura interrumpida.");
+                        return;
                     } catch (Exception e) {
                         System.err.println("  [TfL] Error ["
                                 + originName + " -> " + destName + "] "

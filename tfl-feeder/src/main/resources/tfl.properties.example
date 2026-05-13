@@ -1,26 +1,24 @@
 # Sprint 1
 app.key=
-<<<<<<< Updated upstream
-routes=KingsCross>O2Arena;Victoria>WembleyPark;Waterloo>BrixtonAcademy;Paddington>RoyalAlbertHall;LondonBridge>AlexandraPalace
-capture.times=0900,1400,1900
-capture.period.minutes=60
-=======
+
 origins=KingsCross,Victoria,Waterloo,Paddington,LondonBridge,LiverpoolStreet,Euston,Marylebone,CharingCross,Stratford,CanaryWharf,BakerStreet,OxfordCircus,PiccadillyCircus,LeicesterSquare,TottenhamCourtRoad,Farringdon,Blackfriars,Westminster,Bank,Moorgate,GreenPark,Holborn,SouthKensington,Hammersmith,ShepherdsBush,Whitechapel,CamdenTown,NottingHillGate,Heathrow
 destinations=O2Arena,WembleyPark,BrixtonAcademy,RoyalAlbertHall,AlexandraPalace
 capture.times=1530,1600,1630,1700,1730,1800,1815,1830,1845,1900,1915,1930,1945,2000,2030
 capture.start.day.offset=0
 capture.days.ahead=10
 request.sleep.ms=150
+
+http.connect.timeout.seconds=10
+http.read.timeout.seconds=45
+http.call.timeout.seconds=60
+request.max.retries=2
+request.retry.backoff.ms=1000
 capture.period.minutes=90
->>>>>>> Stashed changes
+
 sqlite.path=data/tfl.db
 
 # Sprint 2
 broker.url=tcp://localhost:61616
 topic.name=TflJourney
-<<<<<<< Updated upstream
-source.system=tfl-module
-=======
 source.system=tfl-feeder
->>>>>>> Stashed changes
 # Nota: sqlite.path ya no se usa en el flujo principal del Sprint 2

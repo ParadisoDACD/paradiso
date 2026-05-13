@@ -34,18 +34,14 @@ public class TflConfig {
     }
 
     public int getCapturePeriodMinutes() {
-<<<<<<< Updated upstream
-        return Integer.parseInt(props.getProperty("capture.period.minutes", "60"));
+        return parseInt("capture.period.minutes", "90");
     }
 
     public List<String> getCaptureTimes() {
-        return Arrays.asList(props.getProperty("capture.times", "0900,1400,1900").split(","));
-=======
-        return parseInt("capture.period.minutes", "60");
-    }
-
-    public List<String> getCaptureTimes() {
-        return parseCommaSeparated(props.getProperty("capture.times", "0900,1400,1900"));
+        return parseCommaSeparated(props.getProperty(
+                "capture.times",
+                "1530,1600,1630,1700,1730,1800,1815,1830,1845,1900,1915,1930,1945,2000,2030"
+        ));
     }
 
     public int getCaptureStartDayOffset() {
@@ -53,11 +49,31 @@ public class TflConfig {
     }
 
     public int getCaptureDaysAhead() {
-        return parseInt("capture.days.ahead", "2");
+        return parseInt("capture.days.ahead", "10");
     }
 
     public long getRequestSleepMillis() {
-        return parseLong("request.sleep.ms", "200");
+        return parseLong("request.sleep.ms", "150");
+    }
+
+    public int getHttpConnectTimeoutSeconds() {
+        return parseInt("http.connect.timeout.seconds", "10");
+    }
+
+    public int getHttpReadTimeoutSeconds() {
+        return parseInt("http.read.timeout.seconds", "45");
+    }
+
+    public int getHttpCallTimeoutSeconds() {
+        return parseInt("http.call.timeout.seconds", "60");
+    }
+
+    public int getRequestMaxRetries() {
+        return parseInt("request.max.retries", "2");
+    }
+
+    public long getRequestRetryBackoffMillis() {
+        return parseLong("request.retry.backoff.ms", "1000");
     }
 
     public List<String> getOrigins() {
@@ -85,28 +101,19 @@ public class TflConfig {
         }
 
         return getRoutes();
->>>>>>> Stashed changes
     }
 
     public List<String[]> getRoutes() {
         List<String[]> routes = new ArrayList<>();
-<<<<<<< Updated upstream
-        for (String pair : props.getProperty("routes", "").split(";")) {
-            String[] parts = pair.trim().split(">");
-=======
 
         for (String pair : props.getProperty("routes", "").split(";")) {
             String[] parts = pair.trim().split(">");
 
->>>>>>> Stashed changes
             if (parts.length == 2) {
                 routes.add(new String[]{parts[0].trim(), parts[1].trim()});
             }
         }
-<<<<<<< Updated upstream
-=======
 
->>>>>>> Stashed changes
         return routes;
     }
 
@@ -119,10 +126,8 @@ public class TflConfig {
     }
 
     public String getSourceSystem() {
-        return props.getProperty("source.system", "tfl-module");
+        return props.getProperty("source.system", "tfl-feeder");
     }
-<<<<<<< Updated upstream
-=======
 
     private int parseInt(String key, String defaultValue) {
         return Integer.parseInt(props.getProperty(key, defaultValue).trim());
@@ -142,5 +147,4 @@ public class TflConfig {
                 .filter(item -> !item.isBlank())
                 .toList();
     }
->>>>>>> Stashed changes
 }
