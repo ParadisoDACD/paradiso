@@ -12,9 +12,9 @@
     <packaging>pom</packaging>
 
     <modules>
-        <module>ticketmaster-module</module>
-        <module>tfl-module</module>
-        <module>eventstore-builder-module</module>
+        <module>ticketmaster-feeder</module>
+        <module>tfl-feeder</module>
+        <module>eventstore-builder</module>
         <module>business-unit</module>
     </modules>
 
