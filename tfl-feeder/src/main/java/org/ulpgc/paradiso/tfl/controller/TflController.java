@@ -40,18 +40,32 @@ public class TflController {
     public void executeCapture() {
         String batchId = UUID.randomUUID().toString();
         String capturedAt = Instant.now().toString();
+        List<String[]> routePairs = config.getRoutePairs();
+        List<String> captureTimes = config.getCaptureTimes();
+        int startDayOffset = config.getCaptureStartDayOffset();
+        int daysAhead = config.getCaptureDaysAhead();
+        LocalDate baseDate = LocalDate.now();
+
+        LocalDate firstCaptureDate = baseDate.plusDays(startDayOffset);
+        LocalDate lastCaptureDate = baseDate.plusDays(startDayOffset + daysAhead - 1);
 
         System.out.println("\n[TfL] ======== Iniciando captura ========");
         System.out.println("[TfL] Lote: " + batchId);
+        System.out.println("[TfL] Rutas configuradas: " + routePairs.size());
+        System.out.println("[TfL] Horas por dia: " + captureTimes);
+        System.out.println("[TfL] Ventana: desde D+" + startDayOffset
+                + " hasta D+" + (startDayOffset + daysAhead - 1)
+                + " (" + firstCaptureDate + " a " + lastCaptureDate + ")");
 
         int totalPublished = 0;
+        int totalRequests = 0;
 
-        for (int dayOffset = 0; dayOffset < 2; dayOffset++) {
+        for (int dayOffset = startDayOffset; dayOffset < startDayOffset + daysAhead; dayOffset++) {
             LocalDate date = LocalDate.now().plusDays(dayOffset);
             String dateStr = date.format(TFL_DATE_FORMAT);
             String captureDateIso = date.toString();
 
-            for (String[] route : config.getRoutes()) {
+            for (String[] route : routePairs) {
                 String originName = route[0];
                 String destName = route[1];
 
@@ -66,8 +80,10 @@ public class TflController {
                     continue;
                 }
 
-                for (String captureTime : config.getCaptureTimes()) {
+                for (String captureTime : captureTimes) {
                     try {
+                        totalRequests++;
+
                         String raw = feeder.fetchRawJourneys(
                                 fromNaptan,
                                 toNaptan,
@@ -98,23 +114,33 @@ public class TflController {
                                 captureTime.trim(),
                                 journeys.size());
 
-                        Thread.sleep(200);
-
-                    } catch (InterruptedException e) {
-                        Thread.currentThread().interrupt();
-                        System.err.println("[TfL] Captura interrumpida.");
-                        return;
                     } catch (Exception e) {
                         System.err.println("  [TfL] Error ["
                                 + originName + " -> " + destName + "] "
                                 + captureDateIso + " " + captureTime + ": "
                                 + e.getMessage());
+                    } finally {
+                        if (!pauseBetweenRequests()) {
+                            return;
+                        }
                     }
                 }
             }
         }
 
+        System.out.println("[TfL] Total de requests: " + totalRequests);
         System.out.println("[TfL] Total publicado: " + totalPublished
                 + " itinerarios en topic '" + config.getTopicName() + "'");
+    }
+
+    private boolean pauseBetweenRequests() {
+        try {
+            Thread.sleep(config.getRequestSleepMillis());
+            return true;
+        } catch (InterruptedException e) {
+            Thread.currentThread().interrupt();
+            System.err.println("[TfL] Captura interrumpida durante la espera entre requests.");
+            return false;
+        }
     }
 }
