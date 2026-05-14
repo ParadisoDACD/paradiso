@@ -38,6 +38,23 @@ public class RestApi {
     public void start() {
         app = Javalin.create().start(port);
 
+        registerRootEndpoint();
+        registerStatusEndpoint();
+        registerConcertEndpoints();
+        registerRecommendationEndpoints();
+        registerCatalogEndpoints();
+        registerTransportEndpoints();
+
+        printEndpoints();
+    }
+
+    public void stop() {
+        if (app != null) {
+            app.stop();
+        }
+    }
+
+    private void registerRootEndpoint() {
         app.get("/", ctx -> json(ctx, Map.of(
                 "application", "Paradiso Business Unit",
                 "description", "API REST para consultar conciertos en Londres y recomendaciones de transporte TfL precalculadas",
@@ -59,7 +76,9 @@ public class RestApi {
                         "recommendationsByArtist", "/artists/{artist}/recommendations"
                 )
         )));
+    }
 
+    private void registerStatusEndpoint() {
         app.get("/status", ctx -> json(ctx, new DatamartStatus(
                 datamart.concertCount(),
                 datamart.transportCount(),
@@ -67,7 +86,9 @@ public class RestApi {
                 datamart.planCount(),
                 datamart.lastProcessedAt()
         )));
+    }
 
+    private void registerConcertEndpoints() {
         app.get("/concerts", ctx -> {
             String query = ctx.queryParam("query");
 
@@ -113,7 +134,9 @@ public class RestApi {
 
             json(ctx, recommendationResponse(ctx, queryMap(filter), service.recommendations(filter)));
         });
+    }
 
+    private void registerRecommendationEndpoints() {
         app.get("/artists/{artist}/recommendations", ctx -> {
             String artist = ctx.pathParam("artist");
 
@@ -168,11 +191,14 @@ public class RestApi {
 
             json(ctx, recommendationResponse(ctx, queryMap(filter), service.recommendations(filter)));
         });
+    }
 
+    private void registerCatalogEndpoints() {
         app.get("/origins", ctx -> json(ctx, datamart.origins()));
-
         app.get("/venues", ctx -> json(ctx, service.venueMappings()));
+    }
 
+    private void registerTransportEndpoints() {
         app.get("/transport", ctx -> json(ctx, datamart.transports()));
 
         app.get("/concerts/{id}/transport", ctx -> {
@@ -185,14 +211,6 @@ public class RestApi {
 
             json(ctx, response);
         });
-
-        printEndpoints();
-    }
-
-    public void stop() {
-        if (app != null) {
-            app.stop();
-        }
     }
 
     private Map<String, Object> recommendationResponse(Context ctx,
