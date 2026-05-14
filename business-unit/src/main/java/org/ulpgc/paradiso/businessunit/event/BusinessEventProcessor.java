@@ -5,6 +5,10 @@ import com.google.gson.JsonObject;
 import org.ulpgc.paradiso.businessunit.datamart.ConcertRecord;
 import org.ulpgc.paradiso.businessunit.datamart.Datamart;
 import org.ulpgc.paradiso.businessunit.datamart.TransportRecord;
+import org.ulpgc.paradiso.businessunit.recommendation.RecommendationBuilder;
+import org.ulpgc.paradiso.businessunit.recommendation.RouteScoringService;
+import org.ulpgc.paradiso.businessunit.service.BusinessIngestionService;
+import org.ulpgc.paradiso.businessunit.venue.VenueNormalizer;
 
 import java.util.Objects;
 import java.util.stream.Collectors;
@@ -15,11 +19,22 @@ public class BusinessEventProcessor {
     public static final String TICKETMASTER_TOPIC = "TicketmasterEvent";
     public static final String TFL_TOPIC = "TflJourney";
 
-    private final Datamart datamart;
+    private final BusinessIngestionService ingestionService;
     private final Gson gson = new Gson();
 
     public BusinessEventProcessor(Datamart datamart) {
-        this.datamart = datamart;
+        this(new BusinessIngestionService(
+                datamart,
+                new RecommendationBuilder(
+                        datamart,
+                        new VenueNormalizer(),
+                        new RouteScoringService()
+                )
+        ));
+    }
+
+    public BusinessEventProcessor(BusinessIngestionService ingestionService) {
+        this.ingestionService = ingestionService;
     }
 
     public void process(String topic, String jsonLine) {
@@ -37,9 +52,9 @@ public class BusinessEventProcessor {
             JsonObject payload = root.getAsJsonObject("payload");
 
             if (TICKETMASTER_TOPIC.equals(topic)) {
-                datamart.upsertConcert(toConcert(payload, ts));
+                ingestionService.ingestConcert(toConcert(payload, ts));
             } else if (TFL_TOPIC.equals(topic)) {
-                datamart.upsertTransport(toTransport(payload, ts));
+                ingestionService.ingestTransport(toTransport(payload, ts));
             }
 
         } catch (Exception e) {

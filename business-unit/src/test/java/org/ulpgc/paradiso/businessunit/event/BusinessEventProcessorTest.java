@@ -151,4 +151,33 @@ class BusinessEventProcessorTest {
         assertEquals(0, datamart.concertCount());
         assertEquals(0, datamart.transportCount());
     }
+
+    @Test
+    void processingConcertAndTransportBuildsRecommendationPlan() {
+        String concertJson = """
+                {"ts":"2026-05-14T09:00:00Z","ss":"ticketmaster-feeder","payload":{
+                "externalEventId":"event-o2","name":"Coldplay","classificationName":"music",
+                "segment":"Music","genre":"Rock","city":"London","countryCode":"GB",
+                "venueName":"The O2","eventUrl":"https://ticketmaster.co.uk/x",
+                "localDate":"2026-06-01","localTime":"20:00:00",
+                "dateTimeIso":"2026-06-01T20:00:00","sourceCategory":"music"}}
+                """;
+
+        String transportJson = """
+                {"ts":"2026-05-14T09:10:00Z","ss":"tfl-feeder","payload":{
+                "journeyHash":"route-o2-hash","originName":"Victoria","destinationName":"North Greenwich",
+                "startDateTime":"2026-06-01T18:30:00","arrivalDateTime":"2026-06-01T19:10:00",
+                "durationMinutes":31,"numberOfLegs":2,"firstLegMode":"tube",
+                "captureDate":"2026-06-01","captureTime":"1830",
+                "sourceOrigin":"Victoria","sourceDestination":"O2Arena"}}
+                """;
+
+        processor.process("TicketmasterEvent", concertJson);
+        processor.process("TflJourney", transportJson);
+
+        assertEquals(1, datamart.planCount());
+        assertEquals("event-o2", datamart.plans().getFirst().eventId());
+        assertEquals("route-o2-hash|2026-06-01|1830|2026-06-01T18:30:00|2026-06-01T19:10:00",
+                datamart.plans().getFirst().journeyKey());
+    }
 }
