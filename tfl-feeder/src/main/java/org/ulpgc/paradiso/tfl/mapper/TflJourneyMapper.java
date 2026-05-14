@@ -11,12 +11,7 @@ import java.util.List;
 public class TflJourneyMapper {
 
     public List<TflJourney> map(String rawJson,
-                                String sourceOrigin,
-                                String sourceDestination,
-                                String captureDate,
-                                String captureTime,
-                                String captureBatchId,
-                                String capturedAt) {
+                                TflCaptureContext context) {
 
         List<TflJourney> result = new ArrayList<>();
 
@@ -69,20 +64,20 @@ public class TflJourneyMapper {
                         }
                     }
 
-                    journey.setCaptureDate(captureDate);
-                    journey.setCaptureTime(captureTime);
-                    journey.setSourceOrigin(sourceOrigin);
-                    journey.setSourceDestination(sourceDestination);
-                    journey.setCaptureBatchId(captureBatchId);
-                    journey.setCapturedAt(capturedAt);
+                    journey.setCaptureDate(context.captureDate());
+                    journey.setCaptureTime(context.captureTime());
+                    journey.setSourceOrigin(context.sourceOrigin());
+                    journey.setSourceDestination(context.sourceDestination());
+                    journey.setCaptureBatchId(context.captureBatchId());
+                    journey.setCapturedAt(context.capturedAt());
 
                     journey.setJourneyHash(generateHash(
-                            sourceOrigin,
-                            sourceDestination,
+                            context.sourceOrigin(),
+                            context.sourceDestination(),
                             journey.getStartDateTime(),
                             journey.getArrivalDateTime(),
-                            captureDate,
-                            captureTime
+                            context.captureDate(),
+                            context.captureTime()
                     ));
 
                     result.add(journey);

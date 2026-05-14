@@ -38,11 +38,13 @@ class TicketmasterEventMapperTest {
 
         List<TicketmasterEvent> result = mapper.map(
                 JSON_COMPLETO,
-                "GB",
-                "London",
-                "music",
-                "batch-1",
-                "2026-04-01T00:00:00Z"
+                new TicketmasterCaptureContext(
+                        "GB",
+                        "London",
+                        "music",
+                        "batch-1",
+                        "2026-04-01T00:00:00Z"
+                )
         );
 
         assertEquals(1, result.size());
@@ -69,11 +71,13 @@ class TicketmasterEventMapperTest {
 
         List<TicketmasterEvent> result = mapper.map(
                 JSON_SIN_EVENTOS,
-                "GB",
-                "London",
-                "music",
-                "b",
-                "2026-04-01T00:00:00Z"
+                new TicketmasterCaptureContext(
+                        "GB",
+                        "London",
+                        "music",
+                        "b",
+                        "2026-04-01T00:00:00Z"
+                )
         );
 
         assertTrue(result.isEmpty());
@@ -85,11 +89,13 @@ class TicketmasterEventMapperTest {
 
         List<TicketmasterEvent> result = mapper.map(
                 JSON_PARCIAL,
-                "GB",
-                "London",
-                "music",
-                "batch-2",
-                "2026-04-01T00:00:00Z"
+                new TicketmasterCaptureContext(
+                        "GB",
+                        "London",
+                        "music",
+                        "batch-2",
+                        "2026-04-01T00:00:00Z"
+                )
         );
 
         assertEquals(1, result.size());

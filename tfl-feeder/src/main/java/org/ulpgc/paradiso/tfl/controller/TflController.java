@@ -2,6 +2,7 @@ package org.ulpgc.paradiso.tfl.controller;
 
 import org.ulpgc.paradiso.tfl.config.TflConfig;
 import org.ulpgc.paradiso.tfl.feeder.JourneyFeeder;
+import org.ulpgc.paradiso.tfl.mapper.TflCaptureContext;
 import org.ulpgc.paradiso.tfl.feeder.TflVenueResolver;
 import org.ulpgc.paradiso.tfl.mapper.TflJourneyMapper;
 import org.ulpgc.paradiso.tfl.messaging.EventPublisher;
@@ -190,8 +191,7 @@ public class TflController {
                 captureTime
         );
 
-        return mapper.map(
-                rawJson,
+        TflCaptureContext mapperContext = new TflCaptureContext(
                 route.originName(),
                 route.destinationName(),
                 day.isoDate(),
@@ -199,6 +199,8 @@ public class TflController {
                 context.batchId(),
                 context.capturedAt()
         );
+
+        return mapper.map(rawJson, mapperContext);
     }
 
     private void publishJourneys(List<TflJourney> journeys) throws Exception {

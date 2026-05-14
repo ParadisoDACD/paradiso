@@ -9,11 +9,7 @@ import java.util.List;
 public class TicketmasterEventMapper {
 
     public List<TicketmasterEvent> map(String rawJson,
-                                       String sourceCountry,
-                                       String sourceCity,
-                                       String sourceCategory,
-                                       String captureBatchId,
-                                       String capturedAt) {
+                                       TicketmasterCaptureContext context) {
 
         List<TicketmasterEvent> result = new ArrayList<>();
 
@@ -35,12 +31,12 @@ public class TicketmasterEventMapper {
                     ev.setExternalEventId(getString(e, "id"));
                     ev.setName(getString(e, "name"));
                     ev.setEventUrl(getString(e, "url"));
-                    ev.setClassificationName(sourceCategory);
-                    ev.setCaptureBatchId(captureBatchId);
-                    ev.setCapturedAt(capturedAt);
-                    ev.setSourceCountry(sourceCountry);
-                    ev.setSourceCity(sourceCity);
-                    ev.setSourceCategory(sourceCategory);
+                    ev.setClassificationName(context.sourceCategory());
+                    ev.setCaptureBatchId(context.captureBatchId());
+                    ev.setCapturedAt(context.capturedAt());
+                    ev.setSourceCountry(context.sourceCountry());
+                    ev.setSourceCity(context.sourceCity());
+                    ev.setSourceCategory(context.sourceCategory());
 
                     if (e.has("classifications")) {
                         JsonArray cls = e.getAsJsonArray("classifications");

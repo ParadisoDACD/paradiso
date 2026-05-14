@@ -64,32 +64,34 @@ class TflJourneyMapperTest {
 
         List<TflJourney> result = mapper.map(
                 JSON_UN_VIAJE,
-                "KingsCross",
-                "O2Arena",
-                "2026-07-15",
-                "0900",
-                "batch-t-1",
-                "2026-04-01T00:00:00Z"
+                new TflCaptureContext(
+                        "KingsCross",
+                        "O2Arena",
+                        "2026-07-15",
+                        "0900",
+                        "batch-t-1",
+                        "2026-04-01T00:00:00Z"
+                )
         );
 
         assertEquals(1, result.size());
 
-        TflJourney j = result.get(0);
+        TflJourney journey = result.get(0);
 
-        assertEquals("2026-07-15T09:00:00", j.getStartDateTime());
-        assertEquals("2026-07-15T09:38:00", j.getArrivalDateTime());
-        assertEquals(38, j.getDurationMinutes());
-        assertEquals(1, j.getNumberOfLegs());
-        assertEquals("tube", j.getFirstLegMode());
-        assertEquals("King's Cross St. Pancras Underground Station", j.getOriginName());
-        assertEquals("North Greenwich Underground Station", j.getDestinationName());
-        assertEquals("KingsCross", j.getSourceOrigin());
-        assertEquals("O2Arena", j.getSourceDestination());
-        assertEquals("2026-07-15", j.getCaptureDate());
-        assertEquals("0900", j.getCaptureTime());
-        assertEquals("batch-t-1", j.getCaptureBatchId());
-        assertNotNull(j.getJourneyHash());
-        assertEquals(16, j.getJourneyHash().length());
+        assertEquals("2026-07-15T09:00:00", journey.getStartDateTime());
+        assertEquals("2026-07-15T09:38:00", journey.getArrivalDateTime());
+        assertEquals(38, journey.getDurationMinutes());
+        assertEquals(1, journey.getNumberOfLegs());
+        assertEquals("tube", journey.getFirstLegMode());
+        assertEquals("King's Cross St. Pancras Underground Station", journey.getOriginName());
+        assertEquals("North Greenwich Underground Station", journey.getDestinationName());
+        assertEquals("KingsCross", journey.getSourceOrigin());
+        assertEquals("O2Arena", journey.getSourceDestination());
+        assertEquals("2026-07-15", journey.getCaptureDate());
+        assertEquals("0900", journey.getCaptureTime());
+        assertEquals("batch-t-1", journey.getCaptureBatchId());
+        assertNotNull(journey.getJourneyHash());
+        assertEquals(16, journey.getJourneyHash().length());
     }
 
     @Test
@@ -98,12 +100,14 @@ class TflJourneyMapperTest {
 
         List<TflJourney> result = mapper.map(
                 JSON_SIN_VIAJES,
-                "KingsCross",
-                "O2Arena",
-                "2026-07-15",
-                "0900",
-                "b",
-                "2026-04-01T00:00:00Z"
+                new TflCaptureContext(
+                        "KingsCross",
+                        "O2Arena",
+                        "2026-07-15",
+                        "0900",
+                        "b",
+                        "2026-04-01T00:00:00Z"
+                )
         );
 
         assertTrue(result.isEmpty());
@@ -115,12 +119,14 @@ class TflJourneyMapperTest {
 
         List<TflJourney> result = mapper.map(
                 JSON_DOS_VIAJES,
-                "KingsCross",
-                "O2Arena",
-                "2026-07-15",
-                "0900",
-                "batch-t-2",
-                "2026-04-01T00:00:00Z"
+                new TflCaptureContext(
+                        "KingsCross",
+                        "O2Arena",
+                        "2026-07-15",
+                        "0900",
+                        "batch-t-2",
+                        "2026-04-01T00:00:00Z"
+                )
         );
 
         assertEquals(2, result.size());

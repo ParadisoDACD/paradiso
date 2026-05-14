@@ -1,6 +1,7 @@
 package org.ulpgc.paradiso.ticketmaster.controller;
 
 import org.ulpgc.paradiso.ticketmaster.config.TicketmasterConfig;
+import org.ulpgc.paradiso.ticketmaster.mapper.TicketmasterCaptureContext;
 import org.ulpgc.paradiso.ticketmaster.feeder.EventFeeder;
 import org.ulpgc.paradiso.ticketmaster.mapper.TicketmasterEventMapper;
 import org.ulpgc.paradiso.ticketmaster.messaging.EventPublisher;
@@ -126,14 +127,15 @@ public class TicketmasterController {
                 50
         );
 
-        return mapper.map(
-                rawJson,
+        TicketmasterCaptureContext mapperContext = new TicketmasterCaptureContext(
                 country,
                 city,
                 category,
                 context.batchId(),
                 context.capturedAt()
         );
+
+        return mapper.map(rawJson, mapperContext);
     }
 
     private void publishEvents(List<TicketmasterEvent> events) throws Exception {
