@@ -1,6 +1,7 @@
 package org.ulpgc.paradiso.businessunit.service;
 
 import org.ulpgc.paradiso.businessunit.datamart.ConcertRecord;
+import org.ulpgc.paradiso.businessunit.datamart.ConcertRoutePlanRecord;
 import org.ulpgc.paradiso.businessunit.datamart.Datamart;
 import org.ulpgc.paradiso.businessunit.datamart.TransportRecord;
 import org.ulpgc.paradiso.businessunit.venue.VenueNormalizer;
@@ -99,6 +100,134 @@ public class ConcertTransportService {
                 .toList();
 
         return ConcertSearchTransportResponse.of(query, results);
+    }
+
+    public List<ConcertRoutePlanRecord> recommendations(RecommendationFilter filter) {
+        RecommendationFilter safeFilter = filter == null ? RecommendationFilter.empty() : filter;
+
+        return baseRecommendations(safeFilter).stream()
+                .filter(plan -> matchesEvent(plan, safeFilter.eventId()))
+                .filter(plan -> matchesArtist(plan, safeFilter.artist()))
+                .filter(plan -> matchesOrigin(plan, safeFilter.origin()))
+                .filter(plan -> matchesVenue(plan, safeFilter.venue()))
+                .filter(plan -> isOnOrAfter(plan.eventDate(), safeFilter.fromDate()))
+                .filter(plan -> isOnOrBefore(plan.eventDate(), safeFilter.untilDate()))
+                .toList();
+    }
+
+    public List<ConcertRoutePlanRecord> recommendationsByEvent(String eventId) {
+        if (safe(eventId).isBlank()) {
+            return List.of();
+        }
+
+        return datamart.plansByEventId(eventId);
+    }
+
+    public List<ConcertRoutePlanRecord> recommendationsByEventAndOrigin(String eventId, String origin) {
+        if (safe(eventId).isBlank()) {
+            return List.of();
+        }
+
+        return recommendations(new RecommendationFilter(
+                eventId,
+                null,
+                origin,
+                null,
+                null,
+                null
+        ));
+    }
+
+    public List<ConcertRoutePlanRecord> recommendationsByArtist(String artist) {
+        if (safe(artist).isBlank()) {
+            return List.of();
+        }
+
+        return datamart.plansByArtist(artist);
+    }
+
+    public List<ConcertRoutePlanRecord> recommendationsByArtistAndOrigin(String artist, String origin) {
+        if (safe(artist).isBlank()) {
+            return List.of();
+        }
+
+        if (safe(origin).isBlank()) {
+            return recommendationsByArtist(artist);
+        }
+
+        return datamart.plansByArtistAndOrigin(artist, origin);
+    }
+
+    public List<ConcertRoutePlanRecord> recommendationsByOrigin(String origin) {
+        if (safe(origin).isBlank()) {
+            return List.of();
+        }
+
+        return datamart.plansByOrigin(origin);
+    }
+
+    public List<VenueStopMapping> venueMappings() {
+        return venueNormalizer.mappings();
+    }
+
+    private List<ConcertRoutePlanRecord> baseRecommendations(RecommendationFilter filter) {
+        if (!safe(filter.eventId()).isBlank()) {
+            return datamart.plansByEventId(filter.eventId());
+        }
+
+        if (!safe(filter.origin()).isBlank()) {
+            return datamart.plansByOrigin(filter.origin());
+        }
+
+        return datamart.plans();
+    }
+
+    private boolean matchesEvent(ConcertRoutePlanRecord plan, String eventId) {
+        return safe(eventId).isBlank()
+                || safe(plan.eventId()).equalsIgnoreCase(safe(eventId));
+    }
+
+    private boolean matchesArtist(ConcertRoutePlanRecord plan, String artist) {
+        return safe(artist).isBlank()
+                || normalize(plan.artistName()).contains(normalize(artist));
+    }
+
+    private boolean matchesOrigin(ConcertRoutePlanRecord plan, String origin) {
+        return safe(origin).isBlank()
+                || safe(plan.originKey()).equalsIgnoreCase(safe(origin))
+                || normalize(plan.originName()).contains(normalize(origin));
+    }
+
+    private boolean matchesVenue(ConcertRoutePlanRecord plan, String venue) {
+        return safe(venue).isBlank()
+                || safe(plan.venueKey()).equalsIgnoreCase(safe(venue))
+                || normalize(plan.venueName()).contains(normalize(venue))
+                || normalize(plan.destinationStopName()).contains(normalize(venue))
+                || safe(plan.destinationStopKey()).equalsIgnoreCase(safe(venue));
+    }
+
+    private boolean isOnOrAfter(String date, String fromDate) {
+        if (safe(fromDate).isBlank()) {
+            return true;
+        }
+
+        if (safe(date).isBlank()) {
+            return false;
+        }
+
+        return date.compareTo(fromDate) >= 0;
+    }
+
+    private boolean isOnOrBefore(String date, String untilDate) {
+        if (safe(untilDate).isBlank()) {
+            return true;
+        }
+
+        if (safe(date).isBlank()) {
+            return false;
+        }
+
+        return date.compareTo(untilDate) <= 0;
     }
 
     private ConcertTransportResponse buildResponse(ConcertRecord concert) {
