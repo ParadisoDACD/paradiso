@@ -10,5 +10,5 @@ sqlite.path=data/ticketmaster.db
 # Sprint 2
 broker.url=tcp://localhost:61616
 topic.name=TicketmasterEvent
-source.system=ticketmaster-module
+source.system=ticketmaster-feeder
 # Nota: sqlite.path ya no se usa en el flujo principal del Sprint 2
