@@ -1,4 +1,8 @@
 package org.ulpgc.paradiso.businessunit.loader;
+import org.ulpgc.paradiso.businessunit.recommendation.RecommendationBuilder;
+import org.ulpgc.paradiso.businessunit.recommendation.RouteScoringService;
+import org.ulpgc.paradiso.businessunit.service.BusinessIngestionService;
+import org.ulpgc.paradiso.businessunit.venue.VenueNormalizer;
 
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -37,7 +41,22 @@ class EventStoreLoaderTest {
     @BeforeEach
     void setUp() {
         datamart = new Datamart();
-        processor = new BusinessEventProcessor(datamart);
+        processor = processorFor(datamart);
+    }
+
+    private BusinessEventProcessor processorFor(Datamart datamart) {
+        VenueNormalizer venueNormalizer = new VenueNormalizer();
+        RouteScoringService scoringService = new RouteScoringService();
+        RecommendationBuilder recommendationBuilder = new RecommendationBuilder(
+                datamart,
+                venueNormalizer,
+                scoringService
+        );
+        BusinessIngestionService ingestionService = new BusinessIngestionService(
+                datamart,
+                recommendationBuilder
+        );
+        return new BusinessEventProcessor(ingestionService);
     }
 
     private void createEventsFile(String topic,

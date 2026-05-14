@@ -3,12 +3,8 @@ package org.ulpgc.paradiso.businessunit.event;
 import com.google.gson.Gson;
 import com.google.gson.JsonObject;
 import org.ulpgc.paradiso.businessunit.datamart.ConcertRecord;
-import org.ulpgc.paradiso.businessunit.datamart.Datamart;
 import org.ulpgc.paradiso.businessunit.datamart.TransportRecord;
-import org.ulpgc.paradiso.businessunit.recommendation.RecommendationBuilder;
-import org.ulpgc.paradiso.businessunit.recommendation.RouteScoringService;
 import org.ulpgc.paradiso.businessunit.service.BusinessIngestionService;
-import org.ulpgc.paradiso.businessunit.venue.VenueNormalizer;
 
 import java.util.Objects;
 import java.util.stream.Collectors;
@@ -21,17 +17,6 @@ public class BusinessEventProcessor {
 
     private final BusinessIngestionService ingestionService;
     private final Gson gson = new Gson();
-
-    public BusinessEventProcessor(Datamart datamart) {
-        this(new BusinessIngestionService(
-                datamart,
-                new RecommendationBuilder(
-                        datamart,
-                        new VenueNormalizer(),
-                        new RouteScoringService()
-                )
-        ));
-    }
 
     public BusinessEventProcessor(BusinessIngestionService ingestionService) {
         this.ingestionService = ingestionService;
