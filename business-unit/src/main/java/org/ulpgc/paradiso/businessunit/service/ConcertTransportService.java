@@ -3,6 +3,8 @@ package org.ulpgc.paradiso.businessunit.service;
 import org.ulpgc.paradiso.businessunit.datamart.ConcertRecord;
 import org.ulpgc.paradiso.businessunit.datamart.Datamart;
 import org.ulpgc.paradiso.businessunit.datamart.TransportRecord;
+import org.ulpgc.paradiso.businessunit.venue.VenueNormalizer;
+import org.ulpgc.paradiso.businessunit.venue.VenueStopMapping;
 
 import java.time.LocalDate;
 import java.time.ZoneId;
@@ -31,14 +33,22 @@ public class ConcertTransportService {
     );
 
     private final Datamart datamart;
+    private final VenueNormalizer venueNormalizer;
     private final Supplier<LocalDate> currentDateSupplier;
 
     public ConcertTransportService(Datamart datamart) {
-        this(datamart, () -> LocalDate.now(LONDON_ZONE));
+        this(datamart, new VenueNormalizer(), () -> LocalDate.now(LONDON_ZONE));
     }
 
     ConcertTransportService(Datamart datamart, Supplier<LocalDate> currentDateSupplier) {
+        this(datamart, new VenueNormalizer(), currentDateSupplier);
+    }
+
+    ConcertTransportService(Datamart datamart,
+                            VenueNormalizer venueNormalizer,
+                            Supplier<LocalDate> currentDateSupplier) {
         this.datamart = datamart;
+        this.venueNormalizer = venueNormalizer;
         this.currentDateSupplier = currentDateSupplier;
     }
 
@@ -211,7 +221,7 @@ public class ConcertTransportService {
     private Set<String> extractKeywords(String venueName) {
         String normalizedVenue = normalize(venueName);
 
-        Set<String> aliases = venueAliases(normalizedVenue);
+        Set<String> aliases = venueAliases(venueName);
         if (!aliases.isEmpty()) {
             return aliases;
         }
@@ -222,35 +232,25 @@ public class ConcertTransportService {
                 .collect(Collectors.toSet());
     }
 
-    private Set<String> venueAliases(String normalizedVenue) {
-        if (normalizedVenue.isBlank()) {
-            return Set.of();
-        }
+    private Set<String> venueAliases(String venueName) {
+        return venueNormalizer.findMapping(venueName)
+                .map(this::keywordsFromMapping)
+                .orElseGet(Set::of);
+    }
 
-        if (normalizedVenue.contains("o2 academy brixton")) {
-            return Set.of("brixton", "brixtonacademy");
-        }
-
-        if (normalizedVenue.equals("the o2")
-                || normalizedVenue.contains("at the o2")
-                || normalizedVenue.contains("the o2 arena")
-                || normalizedVenue.contains("indigo at the o2")) {
-            return Set.of("o2arena", "north greenwich", "greenwich");
-        }
-
-        if (normalizedVenue.contains("royal albert hall")) {
-            return Set.of("royalalberthall", "albert", "kensington");
-        }
-
-        if (normalizedVenue.contains("wembley")) {
-            return Set.of("wembley", "wembleypark");
-        }
-
-        if (normalizedVenue.contains("alexandra palace")) {
-            return Set.of("alexandrapalace", "alexandra");
-        }
-
-        return Set.of();
+    private Set<String> keywordsFromMapping(VenueStopMapping mapping) {
+        return java.util.stream.Stream.concat(
+                        java.util.stream.Stream.of(
+                                mapping.venueKey(),
+                                mapping.canonicalVenueName(),
+                                mapping.nearestStopKey(),
+                                mapping.nearestStopName()
+                        ),
+                        mapping.aliases().stream()
+                )
+                .map(this::normalize)
+                .filter(keyword -> !keyword.isBlank())
+                .collect(Collectors.toSet());
     }
 
     private int compareConcertsByDate(ConcertRecord a, ConcertRecord b) {

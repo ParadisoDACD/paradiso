@@ -1,0 +1,123 @@
+package org.ulpgc.paradiso.businessunit.venue;
+
+import java.util.List;
+import java.util.Locale;
+import java.util.Optional;
+import java.util.Set;
+
+public class VenueNormalizer {
+
+    private final List<VenueStopMapping> mappings;
+
+    public VenueNormalizer() {
+        this(defaultMappings());
+    }
+
+    public VenueNormalizer(List<VenueStopMapping> mappings) {
+        this.mappings = List.copyOf(mappings);
+    }
+
+    public Optional<VenueStopMapping> findMapping(String venueName) {
+        String normalizedVenueName = normalize(venueName);
+
+        if (normalizedVenueName.isBlank()) {
+            return Optional.empty();
+        }
+
+        return mappings.stream()
+                .filter(mapping -> matches(mapping, normalizedVenueName))
+                .findFirst();
+    }
+
+    public List<VenueStopMapping> mappings() {
+        return mappings;
+    }
+
+    private boolean matches(VenueStopMapping mapping, String normalizedVenueName) {
+        return mapping.aliases().stream()
+                .map(this::normalize)
+                .anyMatch(alias -> !alias.isBlank()
+                        && (normalizedVenueName.equals(alias)
+                        || normalizedVenueName.contains(alias)
+                        || alias.contains(normalizedVenueName)));
+    }
+
+    private static List<VenueStopMapping> defaultMappings() {
+        return List.of(
+                new VenueStopMapping(
+                        "the_o2",
+                        "The O2",
+                        "O2Arena",
+                        "North Greenwich",
+                        Set.of(
+                                "The O2",
+                                "O2 Arena",
+                                "The O2 Arena",
+                                "indigo at The O2",
+                                "The O2, London",
+                                "North Greenwich"
+                        )
+                ),
+                new VenueStopMapping(
+                        "wembley",
+                        "Wembley Stadium / OVO Arena Wembley",
+                        "WembleyPark",
+                        "Wembley Park",
+                        Set.of(
+                                "Wembley Stadium",
+                                "OVO Arena Wembley",
+                                "Wembley Arena",
+                                "Wembley",
+                                "Wembley Park"
+                        )
+                ),
+                new VenueStopMapping(
+                        "brixton_academy",
+                        "O2 Academy Brixton",
+                        "BrixtonAcademy",
+                        "Brixton",
+                        Set.of(
+                                "O2 Academy Brixton",
+                                "Brixton Academy",
+                                "Academy Brixton",
+                                "Brixton"
+                        )
+                ),
+                new VenueStopMapping(
+                        "royal_albert_hall",
+                        "Royal Albert Hall",
+                        "RoyalAlbertHall",
+                        "High Street Kensington",
+                        Set.of(
+                                "Royal Albert Hall",
+                                "High Street Kensington",
+                                "South Kensington",
+                                "Kensington"
+                        )
+                ),
+                new VenueStopMapping(
+                        "alexandra_palace",
+                        "Alexandra Palace",
+                        "AlexandraPalace",
+                        "Alexandra Palace",
+                        Set.of(
+                                "Alexandra Palace",
+                                "Alexandra Palace Theatre",
+                                "Ally Pally",
+                                "Alexandra"
+                        )
+                )
+        );
+    }
+
+    private String normalize(String value) {
+        if (value == null || value.isBlank()) {
+            return "";
+        }
+
+        return value.toLowerCase(Locale.ROOT)
+                .replaceAll("[^a-z0-9 ]", " ")
+                .replaceAll("\\s+", " ")
+                .trim();
+    }
+}
