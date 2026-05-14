@@ -46,6 +46,7 @@ public class Datamart {
         }
 
         addTransportToIndexes(record);
+        registerOriginFromTransport(record);
         updateLastProcessedAt(record.ts());
     }
 
@@ -185,6 +186,22 @@ public class Datamart {
         transportsByOriginAndDestination
                 .computeIfAbsent(key, ignored -> new ConcurrentHashMap<>())
                 .put(record.journeyKey(), record);
+    }
+
+    private void registerOriginFromTransport(TransportRecord record) {
+        String originKey = safe(record.sourceOrigin());
+
+        if (originKey.isBlank()) {
+            return;
+        }
+
+        originsByKey.putIfAbsent(originKey, new OriginRecord(
+                originKey,
+                safe(record.originName()).isBlank() ? originKey : record.originName(),
+                "",
+                "London",
+                true
+        ));
     }
 
     private void removeTransportFromIndexes(TransportRecord record) {
