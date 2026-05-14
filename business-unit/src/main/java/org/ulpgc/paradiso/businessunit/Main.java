@@ -6,7 +6,11 @@ import org.ulpgc.paradiso.businessunit.datamart.Datamart;
 import org.ulpgc.paradiso.businessunit.event.BusinessEventProcessor;
 import org.ulpgc.paradiso.businessunit.loader.EventStoreLoader;
 import org.ulpgc.paradiso.businessunit.messaging.ReconnectingBusinessUnitSubscriber;
+import org.ulpgc.paradiso.businessunit.recommendation.RecommendationBuilder;
+import org.ulpgc.paradiso.businessunit.recommendation.RouteScoringService;
+import org.ulpgc.paradiso.businessunit.service.BusinessIngestionService;
 import org.ulpgc.paradiso.businessunit.service.ConcertTransportService;
+import org.ulpgc.paradiso.businessunit.venue.VenueNormalizer;
 
 import java.util.concurrent.CountDownLatch;
 
@@ -17,7 +21,18 @@ public class Main {
         printBanner(config);
 
         Datamart datamart = new Datamart();
-        BusinessEventProcessor processor = new BusinessEventProcessor(datamart);
+        VenueNormalizer venueNormalizer = new VenueNormalizer();
+        RouteScoringService scoringService = new RouteScoringService();
+        RecommendationBuilder recommendationBuilder = new RecommendationBuilder(
+                datamart,
+                venueNormalizer,
+                scoringService
+        );
+        BusinessIngestionService ingestionService = new BusinessIngestionService(
+                datamart,
+                recommendationBuilder
+        );
+        BusinessEventProcessor processor = new BusinessEventProcessor(ingestionService);
 
         System.out.println("[BusinessUnit] Iniciando carga histórica desde event store...");
 
@@ -29,9 +44,13 @@ public class Main {
 
         int loaded = loader.loadAll();
 
+        System.out.println("[BusinessUnit] Reconstruyendo recomendaciones precalculadas...");
+        ingestionService.rebuildRecommendations();
+
         System.out.println("[BusinessUnit] Datamart inicial: "
                 + datamart.concertCount() + " conciertos, "
-                + datamart.transportCount() + " rutas. "
+                + datamart.transportCount() + " rutas, "
+                + datamart.planCount() + " planes precalculados. "
                 + "Líneas leídas del event store: " + loaded);
 
         ReconnectingBusinessUnitSubscriber subscriber = startSubscriberManager(config, processor);
