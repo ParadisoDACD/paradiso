@@ -12,6 +12,7 @@ import java.time.Instant;
 import java.time.LocalDate;
 import java.time.format.DateTimeFormatter;
 import java.util.List;
+import java.util.Optional;
 import java.util.UUID;
 
 public class TflController {
@@ -38,113 +39,253 @@ public class TflController {
     }
 
     public void executeCapture() {
-        String batchId = UUID.randomUUID().toString();
-        String capturedAt = Instant.now().toString();
-        List<String[]> routePairs = config.getRoutePairs();
-        List<String> captureTimes = config.getCaptureTimes();
+        CaptureContext context = newCaptureContext();
+
+        printCaptureStart(context);
+
+        CaptureStats stats = publishConfiguredJourneys(context);
+
+        printCaptureSummary(stats);
+    }
+
+    private CaptureContext newCaptureContext() {
+        LocalDate baseDate = LocalDate.now();
         int startDayOffset = config.getCaptureStartDayOffset();
         int daysAhead = config.getCaptureDaysAhead();
-        LocalDate baseDate = LocalDate.now();
 
         LocalDate firstCaptureDate = baseDate.plusDays(startDayOffset);
         LocalDate lastCaptureDate = baseDate.plusDays(startDayOffset + daysAhead - 1);
 
+        return new CaptureContext(
+                UUID.randomUUID().toString(),
+                Instant.now().toString(),
+                config.getRoutePairs(),
+                config.getCaptureTimes(),
+                startDayOffset,
+                daysAhead,
+                baseDate,
+                firstCaptureDate,
+                lastCaptureDate
+        );
+    }
+
+    private void printCaptureStart(CaptureContext context) {
         System.out.println("\n[TfL] ======== Iniciando captura ========");
-        System.out.println("[TfL] Lote: " + batchId);
-        System.out.println("[TfL] Rutas configuradas: " + routePairs.size());
-        System.out.println("[TfL] Horas por dia: " + captureTimes);
-        System.out.println("[TfL] Ventana: desde D+" + startDayOffset
-                + " hasta D+" + (startDayOffset + daysAhead - 1)
-                + " (" + firstCaptureDate + " a " + lastCaptureDate + ")");
+        System.out.println("[TfL] Lote: " + context.batchId());
+        System.out.println("[TfL] Rutas configuradas: " + context.routePairs().size());
+        System.out.println("[TfL] Horas por dia: " + context.captureTimes());
+        System.out.println("[TfL] Ventana: desde D+" + context.startDayOffset()
+                + " hasta D+" + (context.startDayOffset() + context.daysAhead() - 1)
+                + " (" + context.firstCaptureDate() + " a " + context.lastCaptureDate() + ")");
+    }
 
-        int totalPublished = 0;
-        int totalRequests = 0;
+    private CaptureStats publishConfiguredJourneys(CaptureContext context) {
+        CaptureStats stats = new CaptureStats();
 
-        for (int dayOffset = startDayOffset; dayOffset < startDayOffset + daysAhead; dayOffset++) {
-            LocalDate date = baseDate.plusDays(dayOffset);
-            String dateStr = date.format(TFL_DATE_FORMAT);
-            String captureDateIso = date.toString();
+        for (int dayOffset = context.startDayOffset();
+             dayOffset < context.startDayOffset() + context.daysAhead();
+             dayOffset++) {
+            CaptureDay day = captureDay(context, dayOffset);
 
-            for (String[] route : routePairs) {
-                String originName = route[0];
-                String destName = route[1];
-
-                String fromNaptan;
-                String toNaptan;
-
-                try {
-                    fromNaptan = TflVenueResolver.resolve(originName);
-                    toNaptan = TflVenueResolver.resolve(destName);
-                } catch (IllegalArgumentException e) {
-                    System.err.println("  [TfL] " + e.getMessage() + " - ruta omitida.");
-                    continue;
-                }
-
-                for (String captureTime : captureTimes) {
-                    try {
-                        totalRequests++;
-
-                        String raw = feeder.fetchRawJourneys(
-                                fromNaptan,
-                                toNaptan,
-                                dateStr,
-                                captureTime.trim()
-                        );
-
-                        List<TflJourney> journeys = mapper.map(
-                                raw,
-                                originName,
-                                destName,
-                                captureDateIso,
-                                captureTime.trim(),
-                                batchId,
-                                capturedAt
-                        );
-
-                        for (TflJourney journey : journeys) {
-                            String jsonEvent = serializer.serialize(journey);
-                            publisher.publish(jsonEvent);
-                            totalPublished++;
-                        }
-
-                        System.out.printf("  [%s -> %s] %s %s -> %d itinerarios publicados%n",
-                                originName,
-                                destName,
-                                captureDateIso,
-                                captureTime.trim(),
-                                journeys.size());
-
-                    } catch (InterruptedException e) {
-                        Thread.currentThread().interrupt();
-                        System.err.println("[TfL] Captura interrumpida.");
-                        return;
-                    } catch (Exception e) {
-                        System.err.println("  [TfL] Error ["
-                                + originName + " -> " + destName + "] "
-                                + captureDateIso + " " + captureTime + ": "
-                                + e.getMessage());
-                    } finally {
-                        if (!pauseBetweenRequests()) {
-                            return;
-                        }
-                    }
-                }
+            if (!publishDayJourneys(context, day, stats)) {
+                return stats;
             }
         }
 
-        System.out.println("[TfL] Total de requests: " + totalRequests);
-        System.out.println("[TfL] Total publicado: " + totalPublished
-                + " itinerarios en topic '" + config.getTopicName() + "'");
+        return stats;
+    }
+
+    private CaptureDay captureDay(CaptureContext context, int dayOffset) {
+        LocalDate date = context.baseDate().plusDays(dayOffset);
+
+        return new CaptureDay(
+                date.format(TFL_DATE_FORMAT),
+                date.toString()
+        );
+    }
+
+    private boolean publishDayJourneys(CaptureContext context,
+                                       CaptureDay day,
+                                       CaptureStats stats) {
+        for (String[] route : context.routePairs()) {
+            if (!publishRouteJourneys(context, day, route, stats)) {
+                return false;
+            }
+        }
+
+        return true;
+    }
+
+    private boolean publishRouteJourneys(CaptureContext context,
+                                         CaptureDay day,
+                                         String[] route,
+                                         CaptureStats stats) {
+        String originName = route[0];
+        String destinationName = route[1];
+
+        Optional<ResolvedRoute> resolvedRoute = resolveRoute(originName, destinationName);
+
+        if (resolvedRoute.isEmpty()) {
+            return true;
+        }
+
+        for (String captureTime : context.captureTimes()) {
+            if (!publishRouteTime(context, day, resolvedRoute.get(), captureTime.trim(), stats)) {
+                return false;
+            }
+        }
+
+        return true;
+    }
+
+    private Optional<ResolvedRoute> resolveRoute(String originName, String destinationName) {
+        try {
+            return Optional.of(new ResolvedRoute(
+                    originName,
+                    destinationName,
+                    TflVenueResolver.resolve(originName),
+                    TflVenueResolver.resolve(destinationName)
+            ));
+        } catch (IllegalArgumentException exception) {
+            System.err.println("  [TfL] " + exception.getMessage() + " - ruta omitida.");
+            return Optional.empty();
+        }
+    }
+
+    private boolean publishRouteTime(CaptureContext context,
+                                     CaptureDay day,
+                                     ResolvedRoute route,
+                                     String captureTime,
+                                     CaptureStats stats) {
+        boolean shouldContinue = true;
+
+        try {
+            stats.registerRequest();
+
+            List<TflJourney> journeys = fetchJourneys(context, day, route, captureTime);
+
+            publishJourneys(journeys);
+            stats.registerPublished(journeys.size());
+
+            printRouteSummary(day, route, captureTime, journeys.size());
+        } catch (InterruptedException exception) {
+            Thread.currentThread().interrupt();
+            System.err.println("[TfL] Captura interrumpida.");
+            shouldContinue = false;
+        } catch (Exception exception) {
+            printRouteError(day, route, captureTime, exception);
+        }
+
+        return shouldContinue && pauseBetweenRequests();
+    }
+
+    private List<TflJourney> fetchJourneys(CaptureContext context,
+                                           CaptureDay day,
+                                           ResolvedRoute route,
+                                           String captureTime) throws Exception {
+        String rawJson = feeder.fetchRawJourneys(
+                route.fromNaptan(),
+                route.toNaptan(),
+                day.tflDate(),
+                captureTime
+        );
+
+        return mapper.map(
+                rawJson,
+                route.originName(),
+                route.destinationName(),
+                day.isoDate(),
+                captureTime,
+                context.batchId(),
+                context.capturedAt()
+        );
+    }
+
+    private void publishJourneys(List<TflJourney> journeys) throws Exception {
+        for (TflJourney journey : journeys) {
+            publisher.publish(serializer.serialize(journey));
+        }
+    }
+
+    private void printRouteSummary(CaptureDay day,
+                                   ResolvedRoute route,
+                                   String captureTime,
+                                   int publishedCount) {
+        System.out.printf("  [%s -> %s] %s %s -> %d itinerarios publicados%n",
+                route.originName(),
+                route.destinationName(),
+                day.isoDate(),
+                captureTime,
+                publishedCount);
+    }
+
+    private void printRouteError(CaptureDay day,
+                                 ResolvedRoute route,
+                                 String captureTime,
+                                 Exception exception) {
+        System.err.println("  [TfL] Error ["
+                + route.originName() + " -> " + route.destinationName() + "] "
+                + day.isoDate() + " " + captureTime + ": "
+                + exception.getMessage());
     }
 
     private boolean pauseBetweenRequests() {
         try {
             Thread.sleep(config.getRequestSleepMillis());
             return true;
-        } catch (InterruptedException e) {
+        } catch (InterruptedException exception) {
             Thread.currentThread().interrupt();
             System.err.println("[TfL] Captura interrumpida durante la espera entre requests.");
             return false;
+        }
+    }
+
+    private void printCaptureSummary(CaptureStats stats) {
+        System.out.println("[TfL] Total de requests: " + stats.totalRequests());
+        System.out.println("[TfL] Total publicado: " + stats.totalPublished()
+                + " itinerarios en topic '" + config.getTopicName() + "'");
+    }
+
+    private record CaptureContext(String batchId,
+                                  String capturedAt,
+                                  List<String[]> routePairs,
+                                  List<String> captureTimes,
+                                  int startDayOffset,
+                                  int daysAhead,
+                                  LocalDate baseDate,
+                                  LocalDate firstCaptureDate,
+                                  LocalDate lastCaptureDate) {
+    }
+
+    private record CaptureDay(String tflDate,
+                              String isoDate) {
+    }
+
+    private record ResolvedRoute(String originName,
+                                 String destinationName,
+                                 String fromNaptan,
+                                 String toNaptan) {
+    }
+
+    private static final class CaptureStats {
+
+        private int totalPublished;
+        private int totalRequests;
+
+        private void registerRequest() {
+            totalRequests++;
+        }
+
+        private void registerPublished(int publishedCount) {
+            totalPublished += publishedCount;
+        }
+
+        private int totalPublished() {
+            return totalPublished;
+        }
+
+        private int totalRequests() {
+            return totalRequests;
         }
     }
 }
