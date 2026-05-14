@@ -1,6 +1,7 @@
 package org.ulpgc.paradiso.ticketmaster.controller;
 
 import org.ulpgc.paradiso.ticketmaster.config.TicketmasterConfig;
+import org.ulpgc.paradiso.ticketmaster.feeder.TicketmasterSearchRequest;
 import org.ulpgc.paradiso.ticketmaster.mapper.TicketmasterCaptureContext;
 import org.ulpgc.paradiso.ticketmaster.feeder.EventFeeder;
 import org.ulpgc.paradiso.ticketmaster.mapper.TicketmasterEventMapper;
@@ -117,7 +118,7 @@ public class TicketmasterController {
                                                 String country,
                                                 String city,
                                                 String category) throws Exception {
-        String rawJson = feeder.fetchRawEvents(
+        TicketmasterSearchRequest request = new TicketmasterSearchRequest(
                 country,
                 city,
                 category,
@@ -126,6 +127,8 @@ public class TicketmasterController {
                 0,
                 50
         );
+
+        String rawJson = feeder.fetchRawEvents(request);
 
         TicketmasterCaptureContext mapperContext = new TicketmasterCaptureContext(
                 country,

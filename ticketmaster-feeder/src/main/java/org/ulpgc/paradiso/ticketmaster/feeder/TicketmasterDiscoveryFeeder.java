@@ -26,42 +26,46 @@ public class TicketmasterDiscoveryFeeder implements EventFeeder {
     }
 
     @Override
-    public String fetchRawEvents(String countryCode,
-                                 String city,
-                                 String category,
-                                 String startDateTime,
-                                 String endDateTime,
-                                 int page,
-                                 int size) throws Exception {
-
-        String url = BASE_URL
-                + "?apikey=" + apiKey
-                + "&countryCode=" + countryCode
-                + "&city=" + URLEncoder.encode(city, StandardCharsets.UTF_8)
-                + "&classificationName=" + URLEncoder.encode(category, StandardCharsets.UTF_8)
-                + "&startDateTime=" + startDateTime
-                + "&endDateTime=" + endDateTime
-                + "&page=" + page
-                + "&size=" + size
-                + "&locale=*";
-
-        Request request = new Request.Builder()
+    public String fetchRawEvents(TicketmasterSearchRequest request) throws Exception {
+        String url = buildUrl(request);
+        Request httpRequest = new Request.Builder()
                 .url(url)
                 .get()
                 .build();
 
-        try (Response response = httpClient.newCall(request).execute()) {
-            if (response.code() == 429) {
-                throw new Exception("Límite de peticiones Ticketmaster alcanzado (429). Espera un momento.");
-            }
-
-            if (!response.isSuccessful()) {
-                String body = response.body() != null ? response.body().string() : "";
-                throw new Exception("HTTP " + response.code()
-                        + " en Ticketmaster [" + city + "]: " + body);
-            }
-
-            return Objects.requireNonNull(response.body()).string();
+        try (Response response = httpClient.newCall(httpRequest).execute()) {
+            return responseBodyOrFail(response, request.city());
         }
+    }
+
+    private String buildUrl(TicketmasterSearchRequest request) {
+        return BASE_URL
+                + "?apikey=" + apiKey
+                + "&countryCode=" + request.countryCode()
+                + "&city=" + encode(request.city())
+                + "&classificationName=" + encode(request.category())
+                + "&startDateTime=" + request.startDateTime()
+                + "&endDateTime=" + request.endDateTime()
+                + "&page=" + request.page()
+                + "&size=" + request.size()
+                + "&locale=*";
+    }
+
+    private String encode(String value) {
+        return URLEncoder.encode(value, StandardCharsets.UTF_8);
+    }
+
+    private String responseBodyOrFail(Response response, String city) throws Exception {
+        if (response.code() == 429) {
+            throw new Exception("Límite de peticiones Ticketmaster alcanzado (429). Espera un momento.");
+        }
+
+        if (!response.isSuccessful()) {
+            String body = response.body() != null ? response.body().string() : "";
+            throw new Exception("HTTP " + response.code()
+                    + " en Ticketmaster [" + city + "]: " + body);
+        }
+
+        return Objects.requireNonNull(response.body()).string();
     }
 }

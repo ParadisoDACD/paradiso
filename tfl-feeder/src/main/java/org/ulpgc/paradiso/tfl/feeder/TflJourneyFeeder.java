@@ -52,22 +52,9 @@ public class TflJourneyFeeder implements JourneyFeeder {
     }
 
     @Override
-    public String fetchRawJourneys(String fromNaptan,
-                                   String toNaptan,
-                                   String date,
-                                   String time) throws Exception {
-        String url = BASE_URL
-                + "/" + fromNaptan
-                + "/to/" + toNaptan
-                + "?app_key=" + appKey
-                + "&date=" + date
-                + "&time=" + time
-                + "&timeIs=Departing"
-                + "&journeyPreference=LeastTime"
-                + "&mode=tube,bus,overground,elizabeth-line,dlr,tram,national-rail";
-
-        Request request = new Request.Builder()
-                .url(url)
+    public String fetchRawJourneys(TflJourneyRequest request) throws Exception {
+        Request httpRequest = new Request.Builder()
+                .url(buildUrl(request))
                 .get()
                 .build();
 
@@ -75,16 +62,16 @@ public class TflJourneyFeeder implements JourneyFeeder {
 
         for (int attempt = 0; attempt <= maxRetries; attempt++) {
             try {
-                return executeRequest(request, fromNaptan, toNaptan);
-            } catch (SocketTimeoutException e) {
-                lastFailure = e;
+                return executeRequest(httpRequest, request);
+            } catch (SocketTimeoutException exception) {
+                lastFailure = exception;
                 logRetry("timeout", attempt);
-            } catch (IOException e) {
-                lastFailure = e;
-                logRetry("error de red: " + e.getMessage(), attempt);
-            } catch (RetryableTflException e) {
-                lastFailure = e;
-                logRetry(e.getMessage(), attempt);
+            } catch (IOException exception) {
+                lastFailure = exception;
+                logRetry("error de red: " + exception.getMessage(), attempt);
+            } catch (RetryableTflException exception) {
+                lastFailure = exception;
+                logRetry(exception.getMessage(), attempt);
             }
 
             if (attempt < maxRetries) {
@@ -98,10 +85,21 @@ public class TflJourneyFeeder implements JourneyFeeder {
                 + (lastFailure != null ? lastFailure.getMessage() : "error desconocido"));
     }
 
-    private String executeRequest(Request request,
-                                  String fromNaptan,
-                                  String toNaptan) throws Exception {
-        try (Response response = httpClient.newCall(request).execute()) {
+    private String buildUrl(TflJourneyRequest request) {
+        return BASE_URL
+                + "/" + request.fromNaptan()
+                + "/to/" + request.toNaptan()
+                + "?app_key=" + appKey
+                + "&date=" + request.date()
+                + "&time=" + request.time()
+                + "&timeIs=Departing"
+                + "&journeyPreference=LeastTime"
+                + "&mode=tube,bus,overground,elizabeth-line,dlr,tram,national-rail";
+    }
+
+    private String executeRequest(Request httpRequest,
+                                  TflJourneyRequest request) throws Exception {
+        try (Response response = httpClient.newCall(httpRequest).execute()) {
             int code = response.code();
 
             if (code == 429) {
@@ -125,7 +123,7 @@ public class TflJourneyFeeder implements JourneyFeeder {
             if (!response.isSuccessful()) {
                 String body = response.body() != null ? response.body().string() : "";
                 throw new Exception("HTTP " + code
-                        + " en TfL [" + fromNaptan + " -> " + toNaptan + "]: " + body);
+                        + " en TfL [" + request.fromNaptan() + " -> " + request.toNaptan() + "]: " + body);
             }
 
             return Objects.requireNonNull(response.body()).string();

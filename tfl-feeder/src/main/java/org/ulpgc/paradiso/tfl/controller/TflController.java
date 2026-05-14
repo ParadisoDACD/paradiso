@@ -1,6 +1,7 @@
 package org.ulpgc.paradiso.tfl.controller;
 
 import org.ulpgc.paradiso.tfl.config.TflConfig;
+import org.ulpgc.paradiso.tfl.feeder.TflJourneyRequest;
 import org.ulpgc.paradiso.tfl.feeder.JourneyFeeder;
 import org.ulpgc.paradiso.tfl.mapper.TflCaptureContext;
 import org.ulpgc.paradiso.tfl.feeder.TflVenueResolver;
@@ -184,12 +185,14 @@ public class TflController {
                                            CaptureDay day,
                                            ResolvedRoute route,
                                            String captureTime) throws Exception {
-        String rawJson = feeder.fetchRawJourneys(
+        TflJourneyRequest request = new TflJourneyRequest(
                 route.fromNaptan(),
                 route.toNaptan(),
                 day.tflDate(),
                 captureTime
         );
+
+        String rawJson = feeder.fetchRawJourneys(request);
 
         TflCaptureContext mapperContext = new TflCaptureContext(
                 route.originName(),
