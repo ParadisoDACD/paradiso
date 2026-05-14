@@ -19,6 +19,7 @@ public class RestApi {
     private static final int DEFAULT_CONCERT_LIMIT = 10;
     private static final int MAX_CONCERT_LIMIT = 50;
     private static final int DEFAULT_PAGE_SIZE = 50;
+    private static final int MAX_PAGE_SIZE = 100;
 
     private final Datamart datamart;
     private final ConcertTransportService service;
@@ -216,41 +217,44 @@ public class RestApi {
     private Map<String, Object> recommendationResponse(Context ctx,
                                                        Map<String, String> query,
                                                        List<ConcertRoutePlanRecord> results) {
-        List<ConcertRoutePlanRecord> pageResults = paginate(ctx, results);
+        PaginationRequest paginationRequest = paginationRequestFrom(ctx);
+        List<ConcertRoutePlanRecord> responseResults = isPaginationRequested(ctx)
+                ? paginate(results, paginationRequest)
+                : results;
 
         Map<String, Object> response = new LinkedHashMap<>();
         response.put("query", query);
         response.put("count", results.size());
 
         if (isPaginationRequested(ctx)) {
-            int page = queryParamAsInt(ctx, "page", 0, 0, Integer.MAX_VALUE);
-            int size = queryParamAsInt(ctx, "size", DEFAULT_PAGE_SIZE, 1, Integer.MAX_VALUE);
-
-            response.put("page", page);
-            response.put("size", size);
-            response.put("totalPages", totalPages(results.size(), size));
+            response.put("page", paginationRequest.page());
+            response.put("size", paginationRequest.size());
+            response.put("totalPages", totalPages(results.size(), paginationRequest.size()));
         }
 
-        response.put("results", pageResults);
+        response.put("results", responseResults);
         return response;
     }
 
-    private List<ConcertRoutePlanRecord> paginate(Context ctx, List<ConcertRoutePlanRecord> results) {
-        if (!isPaginationRequested(ctx)) {
-            return results;
-        }
-
-        int page = queryParamAsInt(ctx, "page", 0, 0, Integer.MAX_VALUE);
-        int size = queryParamAsInt(ctx, "size", DEFAULT_PAGE_SIZE, 1, Integer.MAX_VALUE);
-
-        int from = Math.multiplyExact(page, size);
+    private List<ConcertRoutePlanRecord> paginate(List<ConcertRoutePlanRecord> results,
+                                                  PaginationRequest paginationRequest) {
+        long from = (long) paginationRequest.page() * paginationRequest.size();
 
         if (from >= results.size()) {
             return List.of();
         }
 
-        int to = Math.min(from + size, results.size());
-        return results.subList(from, to);
+        int fromIndex = (int) from;
+        int toIndex = Math.min(fromIndex + paginationRequest.size(), results.size());
+
+        return results.subList(fromIndex, toIndex);
+    }
+
+    private PaginationRequest paginationRequestFrom(Context ctx) {
+        int page = queryParamAsInt(ctx, "page", 0, 0, Integer.MAX_VALUE);
+        int size = queryParamAsInt(ctx, "size", DEFAULT_PAGE_SIZE, 1, MAX_PAGE_SIZE);
+
+        return new PaginationRequest(page, size);
     }
 
     private boolean isPaginationRequested(Context ctx) {
@@ -338,11 +342,14 @@ public class RestApi {
         System.out.println("  GET /artists/{artist}/recommendations?origin={origin}");
         System.out.println("  GET /recommendations");
         System.out.println("  GET /recommendations?artist={artist}&origin={origin}&venue={venue}&fromDate={yyyy-mm-dd}&untilDate={yyyy-mm-dd}");
-        System.out.println("  GET /recommendations?page={page}&size={size}");
+        System.out.println("  GET /recommendations?page={page}&size={size}  (size máximo: " + MAX_PAGE_SIZE + ")");
         System.out.println("  GET /origins");
         System.out.println("  GET /venues");
         System.out.println("  GET /transport");
         System.out.println("  GET /concerts/{id}/transport  [legacy]");
         System.out.println("  GET /recommendations/{id}      [legacy]");
+    }
+
+    private record PaginationRequest(int page, int size) {
     }
 }
