@@ -12,7 +12,7 @@ import static org.junit.jupiter.api.Assertions.*;
 class TflBrokerEventSerializerTest {
 
     private final TflBrokerEventSerializer serializer =
-            new TflBrokerEventSerializer("tfl-module");
+            new TflBrokerEventSerializer("tfl-feeder");
 
     private TflJourney journey() {
         TflJourney journey = new TflJourney();
@@ -41,7 +41,7 @@ class TflBrokerEventSerializerTest {
     void serializeIncludesConfiguredSourceSystem() {
         JsonObject root = JsonParser.parseString(serializer.serialize(journey())).getAsJsonObject();
 
-        assertEquals("tfl-module", root.get("ss").getAsString());
+        assertEquals("tfl-feeder", root.get("ss").getAsString());
     }
 
     @Test

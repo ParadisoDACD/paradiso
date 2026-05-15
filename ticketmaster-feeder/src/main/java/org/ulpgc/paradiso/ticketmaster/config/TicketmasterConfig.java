@@ -28,10 +28,6 @@ public class TicketmasterConfig {
         return props.getProperty("api.key");
     }
 
-    public String getSqlitePath() {
-        return props.getProperty("sqlite.path", "data/ticketmaster.db");
-    }
-
     public int getLookaheadDays() {
         return Integer.parseInt(props.getProperty("lookahead.days", "14"));
     }
@@ -61,6 +57,6 @@ public class TicketmasterConfig {
     }
 
     public String getSourceSystem() {
-        return props.getProperty("source.system", "ticketmaster-module");
+        return props.getProperty("source.system", "ticketmaster-feeder");
     }
 }

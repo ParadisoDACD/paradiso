@@ -258,16 +258,18 @@ Ejemplo de configuración:
 
 ```properties
 app.key=TU_CLAVE_TFL
-origins=KingsCross,Victoria,Waterloo,Paddington,LondonBridge,LiverpoolStreet,Euston,Marylebone,CharingCross,Stratford,CanaryWharf,BakerStreet
-
+origins=KingsCross,Victoria,Waterloo,Paddington,LondonBridge,LiverpoolStreet,Euston,Marylebone,CharingCross,Stratford,CanaryWharf,BakerStreet,OxfordCircus,PiccadillyCircus,LeicesterSquare,TottenhamCourtRoad,Farringdon,Blackfriars,Westminster,Bank,Moorgate,GreenPark,Holborn,SouthKensington,Hammersmith,ShepherdsBush,Whitechapel,CamdenTown,NottingHillGate,Heathrow
 destinations=O2Arena,WembleyPark,BrixtonAcademy,RoyalAlbertHall,AlexandraPalace
-capture.times=0900,1400,1900
+capture.times=1530,1700,1830,2000
 capture.start.day.offset=0
-capture.days.ahead=2
-capture.period.minutes=60
-request.sleep.ms=500
-request.timeout.seconds=20
-request.max.retries=3
+capture.days.ahead=3
+request.sleep.ms=300
+http.connect.timeout.seconds=10
+http.read.timeout.seconds=45
+http.call.timeout.seconds=60
+request.max.retries=2
+request.retry.backoff.ms=1000
+capture.period.minutes=90
 broker.url=tcp://localhost:61616
 topic.name=TflJourney
 source.system=tfl-feeder
@@ -475,19 +477,21 @@ http://localhost:7000
 Invoke-RestMethod http://localhost:7000/status | ConvertTo-Json -Depth 5
 ```
 
-Ejemplo de respuesta validada:
+Ejemplo orientativo de respuesta:
 
 ```json
 {
   "concerts": 167,
   "transports": 1589,
-  "origins": 12,
+  "origins": 30,
   "routePlans": 339,
   "lastProcessedAt": "2026-07-09T17:30:00Z"
 }
 ```
 
 ### Endpoints principales
+
+Estos son los endpoints recomendados para usar la funcionalidad final del Sprint 3. Consultan el datamart y las recomendaciones precalculadas cuando aplica.
 
 | Método | Endpoint | Descripción |
 |---|---|---|
@@ -496,12 +500,21 @@ Ejemplo de respuesta validada:
 | GET | `/concerts?query={texto}` | Búsqueda de conciertos |
 | GET | `/concerts/upcoming` | Próximos conciertos |
 | GET | `/concerts/{id}` | Detalle de un concierto |
-| GET | `/transport` | Rutas TfL disponibles |
 | GET | `/origins` | Orígenes disponibles |
 | GET | `/venues` | Venues normalizados y paradas asociadas |
 | GET | `/recommendations` | Consulta general de recomendaciones |
 | GET | `/concerts/{id}/routes` | Rutas precalculadas para un concierto |
 | GET | `/artists/{artist}/recommendations` | Recomendaciones por artista |
+
+### Endpoints de diagnóstico y compatibilidad
+
+Estos endpoints se mantienen para inspección o compatibilidad, pero no son el flujo principal recomendado para la demo final.
+
+| Método | Endpoint | Descripción |
+|---|---|---|
+| GET | `/transport` | Inspección de rutas TfL almacenadas en el datamart |
+| GET | `/concerts/{id}/transport` | Endpoint legacy para consultar transporte de un concierto |
+| GET | `/recommendations/{id}` | Endpoint legacy equivalente a recomendaciones por identificador de concierto |
 
 ### Ejemplos de consultas
 
@@ -607,13 +620,13 @@ En `business-unit` se validan, entre otros aspectos:
 - scoring de rutas;
 - consulta de recomendaciones por evento, artista y origen.
 
-Una ejecución validada de `business-unit` alcanzó:
+La suite debe ejecutarse sin fallos antes de cada entrega:
 
 ```text
-95 tests ejecutados
-0 fallos
-0 errores
+mvn test
 ```
+
+El número exacto de tests puede variar conforme se añadan pruebas de validación, pero la entrega final debe mantenerse en verde.
 
 ---
 
@@ -643,7 +656,8 @@ paradiso/
 │       └── Main.java
 └── docs/
     ├── sprint1/
-    └── sprint2/
+    ├── sprint2/
+    └── sprint3/
 ```
 
 ---

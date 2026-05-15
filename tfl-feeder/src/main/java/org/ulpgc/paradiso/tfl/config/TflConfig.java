@@ -17,20 +17,16 @@ public class TflConfig {
             if (in == null) {
                 throw new RuntimeException(
                         "tfl.properties no encontrado. " +
-                                "Copia tfl.properties.example, renombralo y rellena app.key.");
+                                "Copia tfl.properties.example, renómbralo y rellena app.key.");
             }
             props.load(in);
         } catch (IOException e) {
-            throw new RuntimeException("Error cargando configuracion TfL", e);
+            throw new RuntimeException("Error cargando configuración TfL", e);
         }
     }
 
     public String getAppKey() {
         return props.getProperty("app.key");
-    }
-
-    public String getSqlitePath() {
-        return props.getProperty("sqlite.path", "data/tfl.db");
     }
 
     public int getCapturePeriodMinutes() {

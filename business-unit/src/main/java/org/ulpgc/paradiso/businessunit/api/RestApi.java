@@ -64,17 +64,23 @@ public class RestApi {
                         "2", "Elegir externalEventId o artista",
                         "3", "GET /concerts/{id}/routes o GET /artists/{artist}/recommendations"
                 ),
-                "endpoints", Map.of(
+                "mainEndpoints", Map.of(
                         "status", "/status",
                         "concerts", "/concerts",
                         "upcomingConcerts", "/concerts/upcoming",
                         "concertById", "/concerts/{id}",
-                        "transport", "/transport",
                         "origins", "/origins",
                         "venues", "/venues",
                         "recommendations", "/recommendations?artist={artist}&origin={origin}",
                         "routesByConcert", "/concerts/{id}/routes",
                         "recommendationsByArtist", "/artists/{artist}/recommendations"
+                ),
+                "diagnosticEndpoints", Map.of(
+                        "transport", "/transport"
+                ),
+                "legacyEndpoints", Map.of(
+                        "transportByConcert", "/concerts/{id}/transport",
+                        "recommendationsById", "/recommendations/{id}"
                 )
         )));
     }
@@ -345,7 +351,7 @@ public class RestApi {
         System.out.println("  GET /recommendations?page={page}&size={size}  (size máximo: " + MAX_PAGE_SIZE + ")");
         System.out.println("  GET /origins");
         System.out.println("  GET /venues");
-        System.out.println("  GET /transport");
+        System.out.println("  GET /transport                  [diagnóstico]");
         System.out.println("  GET /concerts/{id}/transport  [legacy]");
         System.out.println("  GET /recommendations/{id}      [legacy]");
     }

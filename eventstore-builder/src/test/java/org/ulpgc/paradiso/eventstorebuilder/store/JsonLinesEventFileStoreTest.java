@@ -36,19 +36,19 @@ class JsonLinesEventFileStoreTest {
     @Test
     void appendValidEventCreatesExpectedFile() throws Exception {
         store.append("TicketmasterEvent",
-                json("2026-06-15T20:00:00Z", "ticketmaster-module", "Concert A"));
+                json("2026-06-15T20:00:00Z", "ticketmaster-feeder", "Concert A"));
 
-        assertTrue(Files.exists(file("TicketmasterEvent", "ticketmaster-module", "20260615")));
+        assertTrue(Files.exists(file("TicketmasterEvent", "ticketmaster-feeder", "20260615")));
     }
 
     @Test
     void appendValidEventWritesOriginalJsonLine() throws Exception {
-        String event = json("2026-06-15T20:00:00Z", "ticketmaster-module", "Concert A");
+        String event = json("2026-06-15T20:00:00Z", "ticketmaster-feeder", "Concert A");
 
         store.append("TicketmasterEvent", event);
 
         List<String> lines = Files.readAllLines(
-                file("TicketmasterEvent", "ticketmaster-module", "20260615"));
+                file("TicketmasterEvent", "ticketmaster-feeder", "20260615"));
 
         assertEquals(1, lines.size());
         assertEquals(event, lines.get(0));
@@ -56,14 +56,14 @@ class JsonLinesEventFileStoreTest {
 
     @Test
     void appendSeveralEventsInSameDayAppendsLines() throws Exception {
-        String event1 = json("2026-06-15T20:00:00Z", "ticketmaster-module", "Concert A");
-        String event2 = json("2026-06-15T21:00:00Z", "ticketmaster-module", "Concert B");
+        String event1 = json("2026-06-15T20:00:00Z", "ticketmaster-feeder", "Concert A");
+        String event2 = json("2026-06-15T21:00:00Z", "ticketmaster-feeder", "Concert B");
 
         store.append("TicketmasterEvent", event1);
         store.append("TicketmasterEvent", event2);
 
         List<String> lines = Files.readAllLines(
-                file("TicketmasterEvent", "ticketmaster-module", "20260615"));
+                file("TicketmasterEvent", "ticketmaster-feeder", "20260615"));
 
         assertEquals(2, lines.size());
         assertEquals(event1, lines.get(0));
@@ -73,28 +73,28 @@ class JsonLinesEventFileStoreTest {
     @Test
     void appendEventsFromDifferentDaysCreatesDifferentFiles() throws Exception {
         store.append("TicketmasterEvent",
-                json("2026-06-15T20:00:00Z", "ticketmaster-module", "Concert A"));
+                json("2026-06-15T20:00:00Z", "ticketmaster-feeder", "Concert A"));
         store.append("TicketmasterEvent",
-                json("2026-06-16T20:00:00Z", "ticketmaster-module", "Concert B"));
+                json("2026-06-16T20:00:00Z", "ticketmaster-feeder", "Concert B"));
 
-        assertTrue(Files.exists(file("TicketmasterEvent", "ticketmaster-module", "20260615")));
-        assertTrue(Files.exists(file("TicketmasterEvent", "ticketmaster-module", "20260616")));
+        assertTrue(Files.exists(file("TicketmasterEvent", "ticketmaster-feeder", "20260615")));
+        assertTrue(Files.exists(file("TicketmasterEvent", "ticketmaster-feeder", "20260616")));
     }
 
     @Test
     void appendDifferentTopicsCreatesDifferentDirectories() throws Exception {
         store.append("TicketmasterEvent",
-                json("2026-06-15T20:00:00Z", "ticketmaster-module", "Concert A"));
+                json("2026-06-15T20:00:00Z", "ticketmaster-feeder", "Concert A"));
         store.append("TflJourney",
-                json("2026-06-15T10:00:00Z", "tfl-module", "Journey A"));
+                json("2026-06-15T10:00:00Z", "tfl-feeder", "Journey A"));
 
-        assertTrue(Files.exists(file("TicketmasterEvent", "ticketmaster-module", "20260615")));
-        assertTrue(Files.exists(file("TflJourney", "tfl-module", "20260615")));
+        assertTrue(Files.exists(file("TicketmasterEvent", "ticketmaster-feeder", "20260615")));
+        assertTrue(Files.exists(file("TflJourney", "tfl-feeder", "20260615")));
     }
 
     @Test
     void appendEventWithoutTsThrowsException() {
-        String event = "{\"ss\":\"ticketmaster-module\",\"payload\":{\"name\":\"No ts\"}}";
+        String event = "{\"ss\":\"ticketmaster-feeder\",\"payload\":{\"name\":\"No ts\"}}";
 
         assertThrows(IllegalArgumentException.class,
                 () -> store.append("TicketmasterEvent", event));
@@ -110,7 +110,7 @@ class JsonLinesEventFileStoreTest {
 
     @Test
     void appendEventWithInvalidTsThrowsException() {
-        String event = "{\"ts\":\"2026-06-15T20:00:00\",\"ss\":\"ticketmaster-module\",\"payload\":{}}";
+        String event = "{\"ts\":\"2026-06-15T20:00:00\",\"ss\":\"ticketmaster-feeder\",\"payload\":{}}";
 
         assertThrows(Exception.class,
                 () -> store.append("TicketmasterEvent", event));
@@ -130,8 +130,8 @@ class JsonLinesEventFileStoreTest {
 
     @Test
     void appendAfterCreatingNewStoreInstanceKeepsAppending() throws Exception {
-        String event1 = json("2026-06-15T20:00:00Z", "ticketmaster-module", "Concert A");
-        String event2 = json("2026-06-15T21:00:00Z", "ticketmaster-module", "Concert B");
+        String event1 = json("2026-06-15T20:00:00Z", "ticketmaster-feeder", "Concert A");
+        String event2 = json("2026-06-15T21:00:00Z", "ticketmaster-feeder", "Concert B");
 
         store.append("TicketmasterEvent", event1);
 
@@ -139,7 +139,7 @@ class JsonLinesEventFileStoreTest {
         anotherStore.append("TicketmasterEvent", event2);
 
         List<String> lines = Files.readAllLines(
-                file("TicketmasterEvent", "ticketmaster-module", "20260615"));
+                file("TicketmasterEvent", "ticketmaster-feeder", "20260615"));
 
         assertEquals(2, lines.size());
         assertEquals(event1, lines.get(0));

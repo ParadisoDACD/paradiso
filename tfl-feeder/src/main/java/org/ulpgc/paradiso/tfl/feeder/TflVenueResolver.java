@@ -114,7 +114,7 @@ public class TflVenueResolver {
         if (id == null) {
             throw new IllegalArgumentException(
                     "Nombre '" + logicalName + "' sin NaPTAN ID en TflVenueResolver. " +
-                            "Buscalo en la API y añadelo al mapa.");
+                            "Búscalo en la API y añádelo al mapa.");
         }
 
         return id;

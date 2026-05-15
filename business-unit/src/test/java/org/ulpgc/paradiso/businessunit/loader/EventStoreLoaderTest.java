@@ -26,12 +26,12 @@ class EventStoreLoaderTest {
     private BusinessEventProcessor processor;
 
     private static final String TM_LINE =
-            "{\"ts\":\"2026-05-05T17:30:00Z\",\"ss\":\"ticketmaster-module\","
+            "{\"ts\":\"2026-05-05T17:30:00Z\",\"ss\":\"ticketmaster-feeder\","
                     + "\"payload\":{\"externalEventId\":\"c001\",\"name\":\"ZAZ\","
                     + "\"city\":\"London\",\"venueName\":\"O2 Academy Brixton\"}}";
 
     private static final String TFL_LINE =
-            "{\"ts\":\"2026-05-05T10:46:09Z\",\"ss\":\"tfl-module\","
+            "{\"ts\":\"2026-05-05T10:46:09Z\",\"ss\":\"tfl-feeder\","
                     + "\"payload\":{\"journeyHash\":\"h1\",\"originName\":\"King's Cross\","
                     + "\"destinationName\":\"North Greenwich\",\"durationMinutes\":27,"
                     + "\"captureDate\":\"2026-05-05\",\"captureTime\":\"0900\","

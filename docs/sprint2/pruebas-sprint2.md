@@ -22,22 +22,22 @@
 El Sprint 2 implementa una arquitectura Publisher/Subscriber con Apache ActiveMQ.
 
 ```text
-ticketmaster-module ──publish──> Topic TicketmasterEvent ──┐
+ticketmaster-feeder ──publish──> Topic TicketmasterEvent ──┐
                                                             │
                                                             ├──> ActiveMQ Broker
                                                             │
-tfl-module          ──publish──> Topic TflJourney        ──┘
+tfl-feeder          ──publish──> Topic TflJourney        ──┘
                                                               │
                                                               │ durable subscription
                                                               ▼
-                                                   eventstore-builder-module
+                                                   eventstore-builder
                                                               │
                                                               ▼
                                       eventstore/{topic}/{ss}/{YYYYMMDD}.events
 ```
 
-Los módulos `ticketmaster-module` y `tfl-module` actúan como publishers.  
-El módulo `eventstore-builder-module` actúa como subscriber durable y persiste los eventos en ficheros JSON Lines.
+Los módulos `ticketmaster-feeder` y `tfl-feeder` actúan como publishers.  
+El módulo `eventstore-builder-feeder` actúa como subscriber durable y persiste los eventos en ficheros JSON Lines.
 
 ---
 
@@ -69,7 +69,7 @@ Resultado: ActiveMQ arrancó correctamente y quedó escuchando conexiones JMS/Op
 El Event Store Builder se ejecutó desde la raíz del proyecto con:
 
 ```powershell
-java -jar .\eventstore-builder-module\target\eventstore-builder-module-1.0-SNAPSHOT.jar
+java -jar .\eventstore-builder\target\eventstore-builder-1.0-SNAPSHOT.jar
 ```
 
 Salida esperada/observada:
@@ -94,7 +94,7 @@ Resultado: el módulo se conectó correctamente al broker y registró suscripcio
 Comando ejecutado:
 
 ```powershell
-java -jar .\ticketmaster-module\target\ticketmaster-module-1.0-SNAPSHOT.jar --once
+java -jar .\ticketmaster-feeder\target\ticketmaster-feeder-1.0-SNAPSHOT.jar --once
 ```
 
 Salida relevante observada:
@@ -102,7 +102,7 @@ Salida relevante observada:
 ```text
 [Ticketmaster] Broker:  tcp://localhost:61616
 [Ticketmaster] Topic:   TicketmasterEvent
-[Ticketmaster] Source:  ticketmaster-module
+[Ticketmaster] Source:  ticketmaster-feeder
 [Ticketmaster] Modo: one-shot
 
 [Ticketmaster] ======== Iniciando captura ========
@@ -129,7 +129,7 @@ TicketmasterEvent
 Comando ejecutado:
 
 ```powershell
-java -jar .\tfl-module\target\tfl-module-1.0-SNAPSHOT.jar --once
+java -jar .\tfl-feeder\target\tfl-feeder-1.0-SNAPSHOT.jar --once
 ```
 
 Resultado observado:
@@ -160,13 +160,13 @@ Mode                 LastWriteTime         Length Name
 d-----        05/05/2026     11:46                TflJourney
 d-----        05/05/2026     11:45                TicketmasterEvent
 
-Directorio: C:\Users\Usuario\IdeaProjects\paradiso\eventstore\TflJourney\tfl-module
+Directorio: C:\Users\Usuario\IdeaProjects\paradiso\eventstore\TflJourney\tfl-feeder
 
 Mode                 LastWriteTime         Length Name
 ----                 -------------         ------ ----
 -a----        05/05/2026     11:47          53612 20260505.events
 
-Directorio: C:\Users\Usuario\IdeaProjects\paradiso\eventstore\TicketmasterEvent\ticketmaster-module
+Directorio: C:\Users\Usuario\IdeaProjects\paradiso\eventstore\TicketmasterEvent\ticketmaster-feeder
 
 Mode                 LastWriteTime         Length Name
 ----                 -------------         ------ ----
@@ -206,21 +206,21 @@ Interpretación:
 Comando ejecutado:
 
 ```powershell
-Get-Content .\eventstore\TflJourney\tfl-module\20260505.events -TotalCount 2
+Get-Content .\eventstore\TflJourney\tfl-feeder\20260505.events -TotalCount 2
 ```
 
 Salida observada:
 
 ```jsonl
-{"ts":"2026-05-05T10:46:09.910902100Z","ss":"tfl-module","payload":{"journeyHash":"6e95af24028b418b","originName":"King\u0027s Cross St. Pancras Underground Station","destinationName":"North Greenwich Underground Station","startDateTime":"2026-05-05T09:00:00","arrivalDateTime":"2026-05-05T09:27:00","durationMinutes":27,"numberOfLegs":2,"firstLegMode":"tube","captureDate":"2026-05-05","captureTime":"0900","sourceOrigin":"KingsCross","sourceDestination":"O2Arena","captureBatchId":"7e9acfa0-4ecb-47c8-9a30-5ce2ce60fe0a","capturedAt":"2026-05-05T10:46:09.910902100Z"}}
-{"ts":"2026-05-05T10:46:09.910902100Z","ss":"tfl-module","payload":{"journeyHash":"3aad3a5f8c366d81","originName":"King\u0027s Cross St. Pancras Underground Station","destinationName":"North Greenwich Underground Station","startDateTime":"2026-05-05T09:03:00","arrivalDateTime":"2026-05-05T09:30:00","durationMinutes":27,"numberOfLegs":2,"firstLegMode":"tube","captureDate":"2026-05-05","captureTime":"0900","sourceOrigin":"KingsCross","sourceDestination":"O2Arena","captureBatchId":"7e9acfa0-4ecb-47c8-9a30-5ce2ce60fe0a","capturedAt":"2026-05-05T10:46:09.910902100Z"}}
+{"ts":"2026-05-05T10:46:09.910902100Z","ss":"tfl-feeder","payload":{"journeyHash":"6e95af24028b418b","originName":"King\u0027s Cross St. Pancras Underground Station","destinationName":"North Greenwich Underground Station","startDateTime":"2026-05-05T09:00:00","arrivalDateTime":"2026-05-05T09:27:00","durationMinutes":27,"numberOfLegs":2,"firstLegMode":"tube","captureDate":"2026-05-05","captureTime":"0900","sourceOrigin":"KingsCross","sourceDestination":"O2Arena","captureBatchId":"7e9acfa0-4ecb-47c8-9a30-5ce2ce60fe0a","capturedAt":"2026-05-05T10:46:09.910902100Z"}}
+{"ts":"2026-05-05T10:46:09.910902100Z","ss":"tfl-feeder","payload":{"journeyHash":"3aad3a5f8c366d81","originName":"King\u0027s Cross St. Pancras Underground Station","destinationName":"North Greenwich Underground Station","startDateTime":"2026-05-05T09:03:00","arrivalDateTime":"2026-05-05T09:30:00","durationMinutes":27,"numberOfLegs":2,"firstLegMode":"tube","captureDate":"2026-05-05","captureTime":"0900","sourceOrigin":"KingsCross","sourceDestination":"O2Arena","captureBatchId":"7e9acfa0-4ecb-47c8-9a30-5ce2ce60fe0a","capturedAt":"2026-05-05T10:46:09.910902100Z"}}
 ```
 
 Conclusión:
 
 - Cada línea es un objeto JSON completo.
 - Cada evento contiene los campos mínimos requeridos: `ts`, `ss` y `payload`.
-- El valor de `ss` es `tfl-module`.
+- El valor de `ss` es `tfl-feeder`.
 - El valor de `ts` es UTC y parseable con `Instant.parse()`.
 
 ### 7.2 Ticketmaster
@@ -228,21 +228,21 @@ Conclusión:
 Comando ejecutado:
 
 ```powershell
-Get-Content .\eventstore\TicketmasterEvent\ticketmaster-module\20260505.events -TotalCount 2
+Get-Content .\eventstore\TicketmasterEvent\ticketmaster-feeder\20260505.events -TotalCount 2
 ```
 
 Salida observada:
 
 ```jsonl
-{"ts":"2026-05-05T17:30:00Z","ss":"ticketmaster-module","payload":{"externalEventId":"17uYvxG65mp7JRS","name":"ZAZ","classificationName":"music","segment":"Music","genre":"Rock","city":"London","countryCode":"GB","venueName":"The London Palladium","eventUrl":"https://www.ticketmaster.co.uk/zaz-london-05-05-2026/event/370062BB96126BF3","localDate":"2026-05-05","localTime":"18:30:00","dateTimeIso":"2026-05-05T17:30:00Z","sourceCountry":"GB","sourceCity":"London","sourceCategory":"music","captureBatchId":"39b48eea-0a5b-439f-add4-ab38bc33fde3","capturedAt":"2026-05-05T10:45:57.524031900Z"}}
-{"ts":"2026-05-05T10:45:57.524031900Z","ss":"ticketmaster-module","payload":{"externalEventId":"G5vHZ_FD8nfdV","name":"Chase and Status: Section 63","classificationName":"music","segment":"Music","genre":"Pop","city":"London","countryCode":"GB","venueName":"Magazine","eventUrl":"https://www.ticketmaster.co.uk/chase-and-status-section-63-london-15-05-2026/event/1F00648ED0A940F4","localDate":"2026-05-15","sourceCountry":"GB","sourceCity":"London","sourceCategory":"music","captureBatchId":"39b48eea-0a5b-439f-add4-ab38bc33fde3","capturedAt":"2026-05-05T10:45:57.524031900Z"}}
+{"ts":"2026-05-05T17:30:00Z","ss":"ticketmaster-feeder","payload":{"externalEventId":"17uYvxG65mp7JRS","name":"ZAZ","classificationName":"music","segment":"Music","genre":"Rock","city":"London","countryCode":"GB","venueName":"The London Palladium","eventUrl":"https://www.ticketmaster.co.uk/zaz-london-05-05-2026/event/370062BB96126BF3","localDate":"2026-05-05","localTime":"18:30:00","dateTimeIso":"2026-05-05T17:30:00Z","sourceCountry":"GB","sourceCity":"London","sourceCategory":"music","captureBatchId":"39b48eea-0a5b-439f-add4-ab38bc33fde3","capturedAt":"2026-05-05T10:45:57.524031900Z"}}
+{"ts":"2026-05-05T10:45:57.524031900Z","ss":"ticketmaster-feeder","payload":{"externalEventId":"G5vHZ_FD8nfdV","name":"Chase and Status: Section 63","classificationName":"music","segment":"Music","genre":"Pop","city":"London","countryCode":"GB","venueName":"Magazine","eventUrl":"https://www.ticketmaster.co.uk/chase-and-status-section-63-london-15-05-2026/event/1F00648ED0A940F4","localDate":"2026-05-15","sourceCountry":"GB","sourceCity":"London","sourceCategory":"music","captureBatchId":"39b48eea-0a5b-439f-add4-ab38bc33fde3","capturedAt":"2026-05-05T10:45:57.524031900Z"}}
 ```
 
 Conclusión:
 
 - Cada línea es un objeto JSON completo.
 - Cada evento contiene `ts`, `ss` y `payload`.
-- El valor de `ss` es `ticketmaster-module`.
+- El valor de `ss` es `ticketmaster-feeder`.
 - En eventos con `dateTimeIso`, `ts` usa la fecha real del evento.
 - En eventos sin `dateTimeIso`, `ts` usa `capturedAt` como fallback.
 
@@ -265,7 +265,7 @@ Procedimiento:
 Medición realizada:
 
 ```text
-Líneas antes en eventstore/TicketmasterEvent/ticketmaster-module/*.events: 72
+Líneas antes en eventstore/TicketmasterEvent/ticketmaster-feeder/*.events: 72
 Ticketmaster publicó: 72 eventos
 Líneas después: 144
 Aumento: 72 eventos

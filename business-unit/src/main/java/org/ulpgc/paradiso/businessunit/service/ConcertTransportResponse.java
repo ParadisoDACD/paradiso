@@ -54,7 +54,7 @@ public record ConcertTransportResponse(
         if (routes.isEmpty()) {
             return baseMessage
                     + "No hay rutas TfL vigentes disponibles. "
-                    + "Ejecuta tfl-module para refrescar el histórico de transporte.";
+                    + "Ejecuta tfl-feeder para refrescar el histórico de transporte.";
         }
 
         return baseMessage

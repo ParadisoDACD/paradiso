@@ -17,7 +17,7 @@ class BusinessEventProcessorTest {
     private BusinessEventProcessor processor;
 
     private static final String TM_FULL = """
-            {"ts":"2026-05-05T17:30:00Z","ss":"ticketmaster-module","payload":{
+            {"ts":"2026-05-05T17:30:00Z","ss":"ticketmaster-feeder","payload":{
             "externalEventId":"abc123","name":"ZAZ","classificationName":"music",
             "segment":"Music","genre":"Rock","city":"London","countryCode":"GB",
             "venueName":"O2 Academy Brixton","eventUrl":"https://ticketmaster.co.uk/x",
@@ -26,7 +26,7 @@ class BusinessEventProcessorTest {
             """;
 
     private static final String TFL_FULL = """
-            {"ts":"2026-05-05T10:46:09Z","ss":"tfl-module","payload":{
+            {"ts":"2026-05-05T10:46:09Z","ss":"tfl-feeder","payload":{
             "journeyHash":"hash1","originName":"King's Cross","destinationName":"North Greenwich",
             "startDateTime":"2026-05-05T09:00","arrivalDateTime":"2026-05-05T09:27",
             "durationMinutes":27,"numberOfLegs":2,"firstLegMode":"tube",

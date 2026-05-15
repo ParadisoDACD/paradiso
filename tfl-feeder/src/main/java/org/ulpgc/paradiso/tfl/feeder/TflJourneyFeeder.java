@@ -79,7 +79,7 @@ public class TflJourneyFeeder implements JourneyFeeder {
             }
         }
 
-        throw new Exception("TfL no respondio tras "
+        throw new Exception("TfL no respondió tras "
                 + (maxRetries + 1)
                 + " intentos: "
                 + (lastFailure != null ? lastFailure.getMessage() : "error desconocido"));
@@ -103,12 +103,12 @@ public class TflJourneyFeeder implements JourneyFeeder {
             int code = response.code();
 
             if (code == 429) {
-                throw new Exception("Limite de peticiones TfL alcanzado (429). "
+                throw new Exception("Límite de peticiones TfL alcanzado (429). "
                         + "Reduce el ritmo de captura o aumenta request.sleep.ms.");
             }
 
             if (code == 401 || code == 403) {
-                throw new Exception("Autenticacion TfL fallida (" + code
+                throw new Exception("Autenticación TfL fallida (" + code
                         + "). Verifica app.key.");
             }
 

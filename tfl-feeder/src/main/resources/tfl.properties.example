@@ -1,4 +1,3 @@
-# Sprint 1
 app.key=
 
 origins=KingsCross,Victoria,Waterloo,Paddington,LondonBridge,LiverpoolStreet,Euston,Marylebone,CharingCross,Stratford,CanaryWharf,BakerStreet,OxfordCircus,PiccadillyCircus,LeicesterSquare,TottenhamCourtRoad,Farringdon,Blackfriars,Westminster,Bank,Moorgate,GreenPark,Holborn,SouthKensington,Hammersmith,ShepherdsBush,Whitechapel,CamdenTown,NottingHillGate,Heathrow
@@ -15,9 +14,6 @@ request.max.retries=2
 request.retry.backoff.ms=1000
 capture.period.minutes=90
 
-sqlite.path=data/tfl.db
-
-# Sprint 2
 broker.url=tcp://localhost:61616
 topic.name=TflJourney
 source.system=tfl-feeder

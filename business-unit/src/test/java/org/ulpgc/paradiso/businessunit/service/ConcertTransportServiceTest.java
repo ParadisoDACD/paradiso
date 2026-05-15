@@ -634,7 +634,7 @@ class ConcertTransportServiceTest {
         assertFalse(response.venueMatch());
         assertTrue(response.routes().isEmpty());
         assertTrue(response.message().contains("No hay rutas TfL vigentes disponibles"));
-        assertTrue(response.message().contains("Ejecuta tfl-module"));
+        assertTrue(response.message().contains("Ejecuta tfl-feeder"));
     }
 
 }

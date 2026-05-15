@@ -12,7 +12,7 @@ import static org.junit.jupiter.api.Assertions.*;
 class TicketmasterBrokerEventSerializerTest {
 
     private final TicketmasterBrokerEventSerializer serializer =
-            new TicketmasterBrokerEventSerializer("ticketmaster-module");
+            new TicketmasterBrokerEventSerializer("ticketmaster-feeder");
 
     private TicketmasterEvent event(String dateTimeIso, String capturedAt) {
         TicketmasterEvent event = new TicketmasterEvent();
@@ -55,7 +55,7 @@ class TicketmasterBrokerEventSerializerTest {
 
         JsonObject root = JsonParser.parseString(serializer.serialize(event)).getAsJsonObject();
 
-        assertEquals("ticketmaster-module", root.get("ss").getAsString());
+        assertEquals("ticketmaster-feeder", root.get("ss").getAsString());
     }
 
     @Test
