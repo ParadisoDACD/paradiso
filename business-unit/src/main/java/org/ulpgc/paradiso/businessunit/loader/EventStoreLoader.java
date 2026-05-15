@@ -23,25 +23,43 @@ public class EventStoreLoader {
     }
 
     public int loadAll() {
-        if (!Files.exists(eventstoreRoot)) {
-            System.out.println("[EventStoreLoader] Event Store no encontrado en: "
-                    + eventstoreRoot.toAbsolutePath());
-            System.out.println("[EventStoreLoader] Sugerencia: ejecutar primero "
-                    + "eventstore-builder-module y los publishers para generar datos.");
+        if (!eventStoreExists()) {
+            printMissingEventStore();
             return 0;
         }
 
+        int total = loadTopics();
+
+        System.out.println("[EventStoreLoader] Carga histórica completada. Total: " + total);
+        return total;
+    }
+
+    private boolean eventStoreExists() {
+        return Files.exists(eventstoreRoot);
+    }
+
+    private void printMissingEventStore() {
+        System.out.println("[EventStoreLoader] Event Store no encontrado en: "
+                + eventstoreRoot.toAbsolutePath());
+        System.out.println("[EventStoreLoader] Sugerencia: ejecutar primero "
+                + "eventstore-builder y los publishers para generar datos.");
+    }
+
+    private int loadTopics() {
         int total = 0;
 
         for (String topic : topics) {
             int count = loadTopic(topic);
-            System.out.println("[EventStoreLoader] Topic " + topic
-                    + ": " + count + " líneas procesadas.");
+            printTopicSummary(topic, count);
             total += count;
         }
 
-        System.out.println("[EventStoreLoader] Carga histórica completada. Total: " + total);
         return total;
+    }
+
+    private void printTopicSummary(String topic, int count) {
+        System.out.println("[EventStoreLoader] Topic " + topic
+                + ": " + count + " líneas procesadas.");
     }
 
     private int loadTopic(String topic) {
@@ -52,50 +70,70 @@ public class EventStoreLoader {
             return 0;
         }
 
+        return loadTopicFiles(topic, topicPath);
+    }
+
+    private int loadTopicFiles(String topic, Path topicPath) {
         try {
-            List<Path> files;
-
-            try (var walk = Files.walk(topicPath)) {
-                files = walk
-                        .filter(Files::isRegularFile)
-                        .filter(path -> path.toString().endsWith(".events"))
-                        .sorted()
-                        .toList();
-            }
-
-            int count = 0;
-
-            for (Path file : files) {
-                count += loadFile(topic, file);
-            }
-
-            return count;
-
-        } catch (Exception e) {
+            return loadFiles(topic, eventFilesIn(topicPath));
+        } catch (Exception exception) {
             System.err.println("[EventStoreLoader] Error recorriendo topic "
-                    + topic + ": " + e.getMessage());
+                    + topic + ": " + exception.getMessage());
             return 0;
         }
     }
 
-    private int loadFile(String topic, Path file) {
+    private List<Path> eventFilesIn(Path topicPath) throws Exception {
+        try (var walk = Files.walk(topicPath)) {
+            return walk
+                    .filter(Files::isRegularFile)
+                    .filter(this::isEventFile)
+                    .sorted()
+                    .toList();
+        }
+    }
+
+    private boolean isEventFile(Path path) {
+        return path.toString().endsWith(".events");
+    }
+
+    private int loadFiles(String topic, List<Path> files) {
         int count = 0;
 
-        try (BufferedReader reader = Files.newBufferedReader(file, StandardCharsets.UTF_8)) {
-            String line;
-
-            while ((line = reader.readLine()) != null) {
-                if (line.isBlank()) continue;
-
-                processor.process(topic, line);
-                count++;
-            }
-
-        } catch (Exception e) {
-            System.err.println("[EventStoreLoader] Error leyendo "
-                    + file + ": " + e.getMessage());
+        for (Path file : files) {
+            count += loadFile(topic, file);
         }
 
         return count;
+    }
+
+    private int loadFile(String topic, Path file) {
+        try (BufferedReader reader = Files.newBufferedReader(file, StandardCharsets.UTF_8)) {
+            return loadLines(topic, reader);
+        } catch (Exception exception) {
+            System.err.println("[EventStoreLoader] Error leyendo "
+                    + file + ": " + exception.getMessage());
+            return 0;
+        }
+    }
+
+    private int loadLines(String topic, BufferedReader reader) throws Exception {
+        int count = 0;
+        String line;
+
+        while ((line = reader.readLine()) != null) {
+            count += processLine(topic, line);
+        }
+
+        return count;
+    }
+
+    private int processLine(String topic, String line) {
+        if (line.isBlank()) {
+            return 0;
+        }
+
+        processor.process(topic, line);
+        return 1;
     }
 }

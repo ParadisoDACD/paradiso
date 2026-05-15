@@ -24,31 +24,46 @@ public class BusinessEventProcessor {
 
     public void process(String topic, String jsonLine) {
         try {
-            JsonObject root = gson.fromJson(jsonLine, JsonObject.class);
-
-            if (root == null
-                    || !root.has("payload")
-                    || root.get("payload").isJsonNull()
-                    || !root.get("payload").isJsonObject()) {
-                return;
-            }
-
-            String ts = getString(root, "ts");
-            JsonObject payload = root.getAsJsonObject("payload");
-
-            if (TICKETMASTER_TOPIC.equals(topic)) {
-                ingestionService.ingestConcert(toConcert(payload, ts));
-            } else if (TFL_TOPIC.equals(topic)) {
-                ingestionService.ingestTransport(toTransport(payload, ts));
-            }
-
-        } catch (Exception e) {
+            processSafely(topic, jsonLine);
+        } catch (Exception exception) {
             System.err.println("[BusinessEventProcessor] Evento ignorado ["
-                    + topic + "]: " + e.getMessage());
+                    + topic + "]: " + exception.getMessage());
         }
     }
 
-    private ConcertRecord toConcert(JsonObject payload, String ts) {
+    private void processSafely(String topic, String jsonLine) {
+        JsonObject root = parseRoot(jsonLine);
+
+        if (!hasPayload(root)) {
+            return;
+        }
+
+        dispatch(topic, root.getAsJsonObject("payload"), getString(root, "ts"));
+    }
+
+    private JsonObject parseRoot(String jsonLine) {
+        return gson.fromJson(jsonLine, JsonObject.class);
+    }
+
+    private boolean hasPayload(JsonObject root) {
+        return root != null
+                && root.has("payload")
+                && !root.get("payload").isJsonNull()
+                && root.get("payload").isJsonObject();
+    }
+
+    private void dispatch(String topic, JsonObject payload, String timestamp) {
+        if (TICKETMASTER_TOPIC.equals(topic)) {
+            ingestionService.ingestConcert(toConcert(payload, timestamp));
+            return;
+        }
+
+        if (TFL_TOPIC.equals(topic)) {
+            ingestionService.ingestTransport(toTransport(payload, timestamp));
+        }
+    }
+
+    private ConcertRecord toConcert(JsonObject payload, String timestamp) {
         return new ConcertRecord(
                 getString(payload, "externalEventId"),
                 getString(payload, "name"),
@@ -63,30 +78,19 @@ public class BusinessEventProcessor {
                 getString(payload, "localTime"),
                 getString(payload, "dateTimeIso"),
                 getString(payload, "sourceCategory"),
-                ts
+                timestamp
         );
     }
 
-    private TransportRecord toTransport(JsonObject payload, String ts) {
+    private TransportRecord toTransport(JsonObject payload, String timestamp) {
         String journeyHash = getString(payload, "journeyHash");
         String captureDate = getString(payload, "captureDate");
         String captureTime = getString(payload, "captureTime");
         String startDateTime = getString(payload, "startDateTime");
         String arrivalDateTime = getString(payload, "arrivalDateTime");
 
-        String journeyKey = Stream.of(
-                        journeyHash,
-                        captureDate,
-                        captureTime,
-                        startDateTime,
-                        arrivalDateTime
-                )
-                .filter(Objects::nonNull)
-                .filter(s -> !s.isBlank())
-                .collect(Collectors.joining("|"));
-
         return new TransportRecord(
-                journeyKey,
+                journeyKey(journeyHash, captureDate, captureTime, startDateTime, arrivalDateTime),
                 journeyHash,
                 getString(payload, "originName"),
                 getString(payload, "destinationName"),
@@ -99,22 +103,39 @@ public class BusinessEventProcessor {
                 captureTime,
                 getString(payload, "sourceOrigin"),
                 getString(payload, "sourceDestination"),
-                ts
+                timestamp
         );
     }
 
-    private String getString(JsonObject obj, String key) {
-        return obj.has(key) && !obj.get(key).isJsonNull()
-                ? obj.get(key).getAsString()
+    private String journeyKey(String journeyHash,
+                              String captureDate,
+                              String captureTime,
+                              String startDateTime,
+                              String arrivalDateTime) {
+        return Stream.of(
+                        journeyHash,
+                        captureDate,
+                        captureTime,
+                        startDateTime,
+                        arrivalDateTime
+                )
+                .filter(Objects::nonNull)
+                .filter(value -> !value.isBlank())
+                .collect(Collectors.joining("|"));
+    }
+
+    private String getString(JsonObject object, String key) {
+        return object.has(key) && !object.get(key).isJsonNull()
+                ? object.get(key).getAsString()
                 : "";
     }
 
-    private Integer getInteger(JsonObject obj, String key) {
+    private Integer getInteger(JsonObject object, String key) {
         try {
-            return obj.has(key) && !obj.get(key).isJsonNull()
-                    ? obj.get(key).getAsInt()
+            return object.has(key) && !object.get(key).isJsonNull()
+                    ? object.get(key).getAsInt()
                     : null;
-        } catch (Exception e) {
+        } catch (Exception exception) {
             return null;
         }
     }
