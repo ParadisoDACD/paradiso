@@ -5,11 +5,14 @@ import org.ulpgc.paradiso.tfl.model.TflJourney;
 
 import java.util.List;
 
-import static org.junit.jupiter.api.Assertions.*;
+import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertNotEquals;
+import static org.junit.jupiter.api.Assertions.assertNotNull;
+import static org.junit.jupiter.api.Assertions.assertTrue;
 
 class TflJourneyMapperTest {
 
-    private static final String JSON_UN_VIAJE = """
+    private static final String SINGLE_JOURNEY_JSON = """
         {"journeys": [{
           "startDateTime":   "2026-07-15T09:00:00",
           "arrivalDateTime": "2026-07-15T09:38:00",
@@ -23,9 +26,9 @@ class TflJourneyMapperTest {
           ]
         }]}""";
 
-    private static final String JSON_SIN_VIAJES = "{}";
+    private static final String JSON_WITHOUT_JOURNEYS = "{}";
 
-    private static final String JSON_DOS_VIAJES = """
+    private static final String TWO_JOURNEYS_JSON = """
         {"journeys": [
           {
             "startDateTime":"2026-07-15T09:00:00",
@@ -59,11 +62,11 @@ class TflJourneyMapperTest {
         ]}""";
 
     @Test
-    void mapeoCompletoDevuelveItinerarioCorrecto() {
+    void mapsCompleteJsonToExpectedJourney() {
         TflJourneyMapper mapper = new TflJourneyMapper();
 
         List<TflJourney> result = mapper.map(
-                JSON_UN_VIAJE,
+                SINGLE_JOURNEY_JSON,
                 new TflCaptureContext(
                         "KingsCross",
                         "O2Arena",
@@ -95,17 +98,17 @@ class TflJourneyMapperTest {
     }
 
     @Test
-    void jsonSinJourneysRetornaListaVacia() {
+    void returnsEmptyListWhenJourneysSectionIsMissing() {
         TflJourneyMapper mapper = new TflJourneyMapper();
 
         List<TflJourney> result = mapper.map(
-                JSON_SIN_VIAJES,
+                JSON_WITHOUT_JOURNEYS,
                 new TflCaptureContext(
                         "KingsCross",
                         "O2Arena",
                         "2026-07-15",
                         "0900",
-                        "b",
+                        "batch-empty",
                         "2026-04-01T00:00:00Z"
                 )
         );
@@ -114,11 +117,11 @@ class TflJourneyMapperTest {
     }
 
     @Test
-    void dosViajesTienenHashesDistintosYLegsCorrectos() {
+    void mapsTwoJourneysWithDifferentHashesAndExpectedLegs() {
         TflJourneyMapper mapper = new TflJourneyMapper();
 
         List<TflJourney> result = mapper.map(
-                JSON_DOS_VIAJES,
+                TWO_JOURNEYS_JSON,
                 new TflCaptureContext(
                         "KingsCross",
                         "O2Arena",

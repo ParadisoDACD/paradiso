@@ -5,11 +5,13 @@ import org.ulpgc.paradiso.ticketmaster.model.TicketmasterEvent;
 
 import java.util.List;
 
-import static org.junit.jupiter.api.Assertions.*;
+import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertNull;
+import static org.junit.jupiter.api.Assertions.assertTrue;
 
 class TicketmasterEventMapperTest {
 
-    private static final String JSON_COMPLETO = """
+    private static final String COMPLETE_EVENT_JSON = """
         {
           "_embedded": { "events": [{
             "id": "TM-001",
@@ -27,17 +29,17 @@ class TicketmasterEventMapperTest {
           }]}
         }""";
 
-    private static final String JSON_SIN_EVENTOS = "{}";
+    private static final String JSON_WITHOUT_EVENTS = "{}";
 
-    private static final String JSON_PARCIAL = """
-        {"_embedded": {"events": [{"id":"TM-002","name":"Sin venue"}]}}""";
+    private static final String PARTIAL_EVENT_JSON = """
+        {"_embedded": {"events": [{"id":"TM-002","name":"Without venue"}]}}""";
 
     @Test
-    void mapeoCompletoDevuelveEventoCorrecto() {
+    void mapsCompleteJsonToExpectedEvent() {
         TicketmasterEventMapper mapper = new TicketmasterEventMapper();
 
         List<TicketmasterEvent> result = mapper.map(
-                JSON_COMPLETO,
+                COMPLETE_EVENT_JSON,
                 new TicketmasterCaptureContext(
                         "GB",
                         "London",
@@ -49,33 +51,33 @@ class TicketmasterEventMapperTest {
 
         assertEquals(1, result.size());
 
-        TicketmasterEvent ev = result.get(0);
+        TicketmasterEvent event = result.get(0);
 
-        assertEquals("TM-001", ev.getExternalEventId());
-        assertEquals("Rock Night London", ev.getName());
-        assertEquals("London", ev.getCity());
-        assertEquals("GB", ev.getCountryCode());
-        assertEquals("2026-07-15", ev.getLocalDate());
-        assertEquals("20:00:00", ev.getLocalTime());
-        assertEquals("Music", ev.getSegment());
-        assertEquals("Rock", ev.getGenre());
-        assertEquals("The O2 Arena", ev.getVenueName());
-        assertEquals("batch-1", ev.getCaptureBatchId());
-        assertEquals("GB", ev.getSourceCountry());
-        assertEquals("music", ev.getSourceCategory());
+        assertEquals("TM-001", event.getExternalEventId());
+        assertEquals("Rock Night London", event.getName());
+        assertEquals("London", event.getCity());
+        assertEquals("GB", event.getCountryCode());
+        assertEquals("2026-07-15", event.getLocalDate());
+        assertEquals("20:00:00", event.getLocalTime());
+        assertEquals("Music", event.getSegment());
+        assertEquals("Rock", event.getGenre());
+        assertEquals("The O2 Arena", event.getVenueName());
+        assertEquals("batch-1", event.getCaptureBatchId());
+        assertEquals("GB", event.getSourceCountry());
+        assertEquals("music", event.getSourceCategory());
     }
 
     @Test
-    void jsonSinEmbeddedRetornaListaVacia() {
+    void returnsEmptyListWhenEmbeddedEventsSectionIsMissing() {
         TicketmasterEventMapper mapper = new TicketmasterEventMapper();
 
         List<TicketmasterEvent> result = mapper.map(
-                JSON_SIN_EVENTOS,
+                JSON_WITHOUT_EVENTS,
                 new TicketmasterCaptureContext(
                         "GB",
                         "London",
                         "music",
-                        "b",
+                        "batch-empty",
                         "2026-04-01T00:00:00Z"
                 )
         );
@@ -84,11 +86,11 @@ class TicketmasterEventMapperTest {
     }
 
     @Test
-    void eventoParcialNoAbortaLaCaptura() {
+    void mapsPartialEventWithoutAbortingCapture() {
         TicketmasterEventMapper mapper = new TicketmasterEventMapper();
 
         List<TicketmasterEvent> result = mapper.map(
-                JSON_PARCIAL,
+                PARTIAL_EVENT_JSON,
                 new TicketmasterCaptureContext(
                         "GB",
                         "London",
