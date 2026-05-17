@@ -14,5 +14,5 @@ public record ConcertRecord(
         String localTime,
         String dateTimeIso,
         String sourceCategory,
-        String ts
+        String capturedAt
 ) {}

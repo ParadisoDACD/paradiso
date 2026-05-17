@@ -12,8 +12,7 @@ public class ReconnectingBusinessUnitSubscriber implements AutoCloseable {
     private final String clientId;
     private final List<String> topicNames;
     private final BusinessEventProcessor processor;
-    private final long reconnectDelayMillis;
-    private final long maxReconnectDelayMillis;
+    private final ReconnectPolicy reconnectPolicy;
 
     private final AtomicBoolean running = new AtomicBoolean(false);
 
@@ -25,14 +24,12 @@ public class ReconnectingBusinessUnitSubscriber implements AutoCloseable {
                                               String clientId,
                                               List<String> topicNames,
                                               BusinessEventProcessor processor,
-                                              long reconnectDelayMillis,
-                                              long maxReconnectDelayMillis) {
+                                              ReconnectPolicy reconnectPolicy) {
         this.brokerUrl = brokerUrl;
         this.clientId = clientId;
         this.topicNames = List.copyOf(topicNames);
         this.processor = processor;
-        this.reconnectDelayMillis = reconnectDelayMillis;
-        this.maxReconnectDelayMillis = maxReconnectDelayMillis;
+        this.reconnectPolicy = reconnectPolicy;
     }
 
     public void start() {
@@ -122,13 +119,13 @@ public class ReconnectingBusinessUnitSubscriber implements AutoCloseable {
     private long reconnectDelayFor(int attempt) {
         int safeAttempt = Math.max(1, attempt);
         long multiplier = 1L << Math.min(safeAttempt - 1, 4);
-        long delay = reconnectDelayMillis * multiplier;
+        long delay = reconnectPolicy.initialDelayMillis() * multiplier;
 
         if (delay < 0) {
-            return maxReconnectDelayMillis;
+            return reconnectPolicy.maxDelayMillis();
         }
 
-        return Math.min(delay, maxReconnectDelayMillis);
+        return Math.min(delay, reconnectPolicy.maxDelayMillis());
     }
 
     @Override

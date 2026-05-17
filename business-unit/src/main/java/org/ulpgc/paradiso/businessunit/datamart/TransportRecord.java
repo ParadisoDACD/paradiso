@@ -14,5 +14,5 @@ public record TransportRecord(
         String captureTime,
         String sourceOrigin,
         String sourceDestination,
-        String ts
+        String capturedAt
 ) {}

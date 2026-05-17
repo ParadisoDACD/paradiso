@@ -2,6 +2,7 @@ package org.ulpgc.paradiso.businessunit.recommendation;
 
 import org.ulpgc.paradiso.businessunit.datamart.ConcertRecord;
 import org.ulpgc.paradiso.businessunit.datamart.TransportRecord;
+import org.ulpgc.paradiso.businessunit.utils.StringUtils;
 import org.ulpgc.paradiso.businessunit.venue.VenueStopMapping;
 
 import java.time.Duration;
@@ -64,7 +65,8 @@ public class RouteScoringService {
     }
 
     private boolean isExactStopMatch(TransportRecord transport, VenueStopMapping mapping) {
-        return safe(transport.sourceDestination()).equalsIgnoreCase(safe(mapping.nearestStopKey()));
+        return StringUtils.safe(transport.sourceDestination())
+                .equalsIgnoreCase(StringUtils.safe(mapping.nearestStopKey()));
     }
 
     private Optional<LocalDateTime> eventDateTime(ConcertRecord concert) {
@@ -73,8 +75,8 @@ public class RouteScoringService {
             return fromIso;
         }
 
-        String date = safe(concert.localDate());
-        String time = safe(concert.localTime());
+        String date = StringUtils.safe(concert.localDate());
+        String time = StringUtils.safe(concert.localTime());
 
         if (date.isBlank()) {
             return Optional.empty();
@@ -92,24 +94,36 @@ public class RouteScoringService {
     }
 
     private Optional<LocalDateTime> parseDateTime(String value) {
-        String safeValue = safe(value);
+        String safeValue = StringUtils.safe(value);
 
         if (safeValue.isBlank()) {
             return Optional.empty();
         }
 
-        try {
-            return Optional.of(Instant.parse(safeValue)
-                    .atZone(LONDON_ZONE)
-                    .toLocalDateTime());
-        } catch (DateTimeParseException ignored) {}
+        return tryParseInstant(safeValue)
+                .or(() -> tryParseOffsetDateTime(safeValue))
+                .or(() -> tryParseLocalDateTime(safeValue));
+    }
 
+    private Optional<LocalDateTime> tryParseInstant(String value) {
         try {
-            return Optional.of(OffsetDateTime.parse(safeValue).toLocalDateTime());
-        } catch (DateTimeParseException ignored) {}
+            return Optional.of(Instant.parse(value).atZone(LONDON_ZONE).toLocalDateTime());
+        } catch (DateTimeParseException ignored) {
+            return Optional.empty();
+        }
+    }
 
+    private Optional<LocalDateTime> tryParseOffsetDateTime(String value) {
         try {
-            return Optional.of(LocalDateTime.parse(safeValue));
+            return Optional.of(OffsetDateTime.parse(value).toLocalDateTime());
+        } catch (DateTimeParseException ignored) {
+            return Optional.empty();
+        }
+    }
+
+    private Optional<LocalDateTime> tryParseLocalDateTime(String value) {
+        try {
+            return Optional.of(LocalDateTime.parse(value));
         } catch (DateTimeParseException ignored) {
             return Optional.empty();
         }
@@ -121,9 +135,5 @@ public class RouteScoringService {
 
     private double round(double value) {
         return Math.round(value * 1000.0) / 1000.0;
-    }
-
-    private String safe(String value) {
-        return value == null ? "" : value;
     }
 }

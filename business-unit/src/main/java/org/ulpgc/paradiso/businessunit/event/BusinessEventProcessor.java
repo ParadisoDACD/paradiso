@@ -63,47 +63,48 @@ public class BusinessEventProcessor {
         }
     }
 
-    private ConcertRecord toConcert(JsonObject payload, String timestamp) {
+    private ConcertRecord toConcert(JsonObject payload, String capturedAt) {
+        String externalEventId   = getString(payload, "externalEventId");
+        String name              = getString(payload, "name");
+        String classificationName = getString(payload, "classificationName");
+        String segment           = getString(payload, "segment");
+        String genre             = getString(payload, "genre");
+        String city              = getString(payload, "city");
+        String countryCode       = getString(payload, "countryCode");
+        String venueName         = getString(payload, "venueName");
+        String eventUrl          = getString(payload, "eventUrl");
+        String localDate         = getString(payload, "localDate");
+        String localTime         = getString(payload, "localTime");
+        String dateTimeIso       = getString(payload, "dateTimeIso");
+        String sourceCategory    = getString(payload, "sourceCategory");
+
         return new ConcertRecord(
-                getString(payload, "externalEventId"),
-                getString(payload, "name"),
-                getString(payload, "classificationName"),
-                getString(payload, "segment"),
-                getString(payload, "genre"),
-                getString(payload, "city"),
-                getString(payload, "countryCode"),
-                getString(payload, "venueName"),
-                getString(payload, "eventUrl"),
-                getString(payload, "localDate"),
-                getString(payload, "localTime"),
-                getString(payload, "dateTimeIso"),
-                getString(payload, "sourceCategory"),
-                timestamp
+                externalEventId, name, classificationName, segment, genre,
+                city, countryCode, venueName, eventUrl, localDate, localTime,
+                dateTimeIso, sourceCategory, capturedAt
         );
     }
 
-    private TransportRecord toTransport(JsonObject payload, String timestamp) {
-        String journeyHash = getString(payload, "journeyHash");
-        String captureDate = getString(payload, "captureDate");
-        String captureTime = getString(payload, "captureTime");
-        String startDateTime = getString(payload, "startDateTime");
+    private TransportRecord toTransport(JsonObject payload, String capturedAt) {
+        String journeyHash    = getString(payload, "journeyHash");
+        String captureDate    = getString(payload, "captureDate");
+        String captureTime    = getString(payload, "captureTime");
+        String startDateTime  = getString(payload, "startDateTime");
         String arrivalDateTime = getString(payload, "arrivalDateTime");
+        String originName     = getString(payload, "originName");
+        String destinationName = getString(payload, "destinationName");
+        Integer durationMinutes = getInteger(payload, "durationMinutes");
+        Integer numberOfLegs  = getInteger(payload, "numberOfLegs");
+        String firstLegMode   = getString(payload, "firstLegMode");
+        String sourceOrigin   = getString(payload, "sourceOrigin");
+        String sourceDestination = getString(payload, "sourceDestination");
+        String journeyKeyValue = journeyKey(journeyHash, captureDate, captureTime, startDateTime, arrivalDateTime);
 
         return new TransportRecord(
-                journeyKey(journeyHash, captureDate, captureTime, startDateTime, arrivalDateTime),
-                journeyHash,
-                getString(payload, "originName"),
-                getString(payload, "destinationName"),
-                startDateTime,
-                arrivalDateTime,
-                getInteger(payload, "durationMinutes"),
-                getInteger(payload, "numberOfLegs"),
-                getString(payload, "firstLegMode"),
-                captureDate,
-                captureTime,
-                getString(payload, "sourceOrigin"),
-                getString(payload, "sourceDestination"),
-                timestamp
+                journeyKeyValue, journeyHash, originName, destinationName,
+                startDateTime, arrivalDateTime, durationMinutes, numberOfLegs,
+                firstLegMode, captureDate, captureTime, sourceOrigin, sourceDestination,
+                capturedAt
         );
     }
 

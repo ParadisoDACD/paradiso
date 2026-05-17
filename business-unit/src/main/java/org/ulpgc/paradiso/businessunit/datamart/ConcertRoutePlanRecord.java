@@ -1,5 +1,7 @@
 package org.ulpgc.paradiso.businessunit.datamart;
 
+import org.ulpgc.paradiso.businessunit.recommendation.MatchType;
+
 public record ConcertRoutePlanRecord(
         String planId,
         String eventId,
@@ -22,6 +24,6 @@ public record ConcertRoutePlanRecord(
         Integer numberOfLegs,
         String firstLegMode,
         Double score,
-        String matchType,
+        MatchType matchType,
         String computedAt
 ) {}

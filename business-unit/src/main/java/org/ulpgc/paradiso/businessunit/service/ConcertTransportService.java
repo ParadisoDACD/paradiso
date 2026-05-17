@@ -4,12 +4,13 @@ import org.ulpgc.paradiso.businessunit.datamart.ConcertRecord;
 import org.ulpgc.paradiso.businessunit.datamart.ConcertRoutePlanRecord;
 import org.ulpgc.paradiso.businessunit.datamart.Datamart;
 import org.ulpgc.paradiso.businessunit.datamart.TransportRecord;
+import org.ulpgc.paradiso.businessunit.utils.DateUtils;
+import org.ulpgc.paradiso.businessunit.utils.StringUtils;
 import org.ulpgc.paradiso.businessunit.venue.VenueNormalizer;
 import org.ulpgc.paradiso.businessunit.venue.VenueStopMapping;
 
 import java.time.LocalDate;
 import java.time.ZoneId;
-import java.time.format.DateTimeParseException;
 import java.util.Arrays;
 import java.util.Comparator;
 import java.util.List;
@@ -54,7 +55,7 @@ public class ConcertTransportService {
     }
 
     public List<ConcertRecord> searchConcerts(String query) {
-        String normalizedQuery = normalize(query);
+        String normalizedQuery = StringUtils.normalize(query);
 
         if (normalizedQuery.isBlank()) {
             return datamart.concerts();
@@ -67,7 +68,7 @@ public class ConcertTransportService {
     }
 
     public List<ConcertRecord> upcomingConcerts(String query, int limit) {
-        List<ConcertRecord> base = normalize(query).isBlank()
+        List<ConcertRecord> base = StringUtils.normalize(query).isBlank()
                 ? datamart.concerts()
                 : searchConcerts(query);
 
@@ -89,7 +90,7 @@ public class ConcertTransportService {
     }
 
     public ConcertSearchTransportResponse recommendationsForSearch(String query, int limit) {
-        String normalizedQuery = normalize(query);
+        String normalizedQuery = StringUtils.normalize(query);
 
         if (normalizedQuery.isBlank()) {
             return ConcertSearchTransportResponse.empty(query);
@@ -116,7 +117,7 @@ public class ConcertTransportService {
     }
 
     public List<ConcertRoutePlanRecord> recommendationsByEvent(String eventId) {
-        if (safe(eventId).isBlank()) {
+        if (StringUtils.safe(eventId).isBlank()) {
             return List.of();
         }
 
@@ -124,7 +125,7 @@ public class ConcertTransportService {
     }
 
     public List<ConcertRoutePlanRecord> recommendationsByEventAndOrigin(String eventId, String origin) {
-        if (safe(eventId).isBlank()) {
+        if (StringUtils.safe(eventId).isBlank()) {
             return List.of();
         }
 
@@ -139,7 +140,7 @@ public class ConcertTransportService {
     }
 
     public List<ConcertRoutePlanRecord> recommendationsByArtist(String artist) {
-        if (safe(artist).isBlank()) {
+        if (StringUtils.safe(artist).isBlank()) {
             return List.of();
         }
 
@@ -147,11 +148,11 @@ public class ConcertTransportService {
     }
 
     public List<ConcertRoutePlanRecord> recommendationsByArtistAndOrigin(String artist, String origin) {
-        if (safe(artist).isBlank()) {
+        if (StringUtils.safe(artist).isBlank()) {
             return List.of();
         }
 
-        if (safe(origin).isBlank()) {
+        if (StringUtils.safe(origin).isBlank()) {
             return recommendationsByArtist(artist);
         }
 
@@ -159,7 +160,7 @@ public class ConcertTransportService {
     }
 
     public List<ConcertRoutePlanRecord> recommendationsByOrigin(String origin) {
-        if (safe(origin).isBlank()) {
+        if (StringUtils.safe(origin).isBlank()) {
             return List.of();
         }
 
@@ -171,11 +172,11 @@ public class ConcertTransportService {
     }
 
     private List<ConcertRoutePlanRecord> baseRecommendations(RecommendationFilter filter) {
-        if (!safe(filter.eventId()).isBlank()) {
+        if (!StringUtils.safe(filter.eventId()).isBlank()) {
             return datamart.plansByEventId(filter.eventId());
         }
 
-        if (!safe(filter.origin()).isBlank()) {
+        if (!StringUtils.safe(filter.origin()).isBlank()) {
             return datamart.plansByOrigin(filter.origin());
         }
 
@@ -183,35 +184,35 @@ public class ConcertTransportService {
     }
 
     private boolean matchesEvent(ConcertRoutePlanRecord plan, String eventId) {
-        return safe(eventId).isBlank()
-                || safe(plan.eventId()).equalsIgnoreCase(safe(eventId));
+        return StringUtils.safe(eventId).isBlank()
+                || StringUtils.safe(plan.eventId()).equalsIgnoreCase(StringUtils.safe(eventId));
     }
 
     private boolean matchesArtist(ConcertRoutePlanRecord plan, String artist) {
-        return safe(artist).isBlank()
-                || normalize(plan.artistName()).contains(normalize(artist));
+        return StringUtils.safe(artist).isBlank()
+                || StringUtils.normalize(plan.artistName()).contains(StringUtils.normalize(artist));
     }
 
     private boolean matchesOrigin(ConcertRoutePlanRecord plan, String origin) {
-        return safe(origin).isBlank()
-                || safe(plan.originKey()).equalsIgnoreCase(safe(origin))
-                || normalize(plan.originName()).contains(normalize(origin));
+        return StringUtils.safe(origin).isBlank()
+                || StringUtils.safe(plan.originKey()).equalsIgnoreCase(StringUtils.safe(origin))
+                || StringUtils.normalize(plan.originName()).contains(StringUtils.normalize(origin));
     }
 
     private boolean matchesVenue(ConcertRoutePlanRecord plan, String venue) {
-        return safe(venue).isBlank()
-                || safe(plan.venueKey()).equalsIgnoreCase(safe(venue))
-                || normalize(plan.venueName()).contains(normalize(venue))
-                || normalize(plan.destinationStopName()).contains(normalize(venue))
-                || safe(plan.destinationStopKey()).equalsIgnoreCase(safe(venue));
+        return StringUtils.safe(venue).isBlank()
+                || StringUtils.safe(plan.venueKey()).equalsIgnoreCase(StringUtils.safe(venue))
+                || StringUtils.normalize(plan.venueName()).contains(StringUtils.normalize(venue))
+                || StringUtils.normalize(plan.destinationStopName()).contains(StringUtils.normalize(venue))
+                || StringUtils.safe(plan.destinationStopKey()).equalsIgnoreCase(StringUtils.safe(venue));
     }
 
     private boolean isOnOrAfter(String date, String fromDate) {
-        if (safe(fromDate).isBlank()) {
+        if (StringUtils.safe(fromDate).isBlank()) {
             return true;
         }
 
-        if (safe(date).isBlank()) {
+        if (StringUtils.safe(date).isBlank()) {
             return false;
         }
 
@@ -219,11 +220,11 @@ public class ConcertTransportService {
     }
 
     private boolean isOnOrBefore(String date, String untilDate) {
-        if (safe(untilDate).isBlank()) {
+        if (StringUtils.safe(untilDate).isBlank()) {
             return true;
         }
 
-        if (safe(date).isBlank()) {
+        if (StringUtils.safe(date).isBlank()) {
             return false;
         }
 
@@ -273,82 +274,58 @@ public class ConcertTransportService {
     }
 
     private boolean isTodayOrFuture(String localDate) {
-        if (safe(localDate).isBlank()) {
-            return false;
-        }
-
-        try {
-            LocalDate concertDate = LocalDate.parse(localDate);
-            return !concertDate.isBefore(currentDateSupplier.get());
-        } catch (DateTimeParseException exception) {
-            return false;
-        }
+        return DateUtils.parseDate(localDate)
+                .map(date -> !date.isBefore(currentDateSupplier.get()))
+                .orElse(false);
     }
 
     private boolean isRouteTodayOrFuture(TransportRecord transport) {
-        LocalDate routeDate = routeDate(transport);
-        return routeDate != null && !routeDate.isBefore(currentDateSupplier.get());
+        return routeDate(transport)
+                .map(date -> !date.isBefore(currentDateSupplier.get()))
+                .orElse(false);
     }
 
-    private LocalDate routeDate(TransportRecord transport) {
-        LocalDate dateFromStartDateTime = parseDatePrefix(transport.startDateTime());
-
-        if (dateFromStartDateTime != null) {
-            return dateFromStartDateTime;
-        }
-
-        return parseDatePrefix(transport.captureDate());
-    }
-
-    private LocalDate parseDatePrefix(String value) {
-        String safeValue = safe(value);
-
-        if (safeValue.length() < 10) {
-            return null;
-        }
-
-        try {
-            return LocalDate.parse(safeValue.substring(0, 10));
-        } catch (DateTimeParseException exception) {
-            return null;
-        }
+    private java.util.Optional<LocalDate> routeDate(TransportRecord transport) {
+        return DateUtils.parseDatePrefix(transport.startDateTime())
+                .or(() -> DateUtils.parseDatePrefix(transport.captureDate()));
     }
 
     private int compareRoutes(TransportRecord a, TransportRecord b) {
         return Comparator
-                .comparing((TransportRecord route) -> route.durationMinutes(), this::compareDuration)
+                .comparing((TransportRecord route) -> route.durationMinutes(),
+                        Comparator.nullsLast(Integer::compareTo))
                 .thenComparing(route -> sortableDateTime(route.startDateTime()))
                 .thenComparing(route -> sortableDateTime(route.arrivalDateTime()))
-                .thenComparing(route -> safe(route.originName()))
-                .thenComparing(route -> safe(route.destinationName()))
+                .thenComparing(route -> StringUtils.safe(route.originName()))
+                .thenComparing(route -> StringUtils.safe(route.destinationName()))
                 .compare(a, b);
     }
 
     private boolean concertMatches(ConcertRecord concert, String normalizedQuery) {
-        String target = normalize(String.join(" ",
-                safe(concert.externalEventId()),
-                safe(concert.name()),
-                safe(concert.classificationName()),
-                safe(concert.segment()),
-                safe(concert.genre()),
-                safe(concert.city()),
-                safe(concert.venueName()),
-                safe(concert.localDate())
+        String target = StringUtils.normalize(String.join(" ",
+                StringUtils.safe(concert.externalEventId()),
+                StringUtils.safe(concert.name()),
+                StringUtils.safe(concert.classificationName()),
+                StringUtils.safe(concert.segment()),
+                StringUtils.safe(concert.genre()),
+                StringUtils.safe(concert.city()),
+                StringUtils.safe(concert.venueName()),
+                StringUtils.safe(concert.localDate())
         ));
 
         return target.contains(normalizedQuery);
     }
 
     private boolean hasTransportMatch(TransportRecord transport, Set<String> keywords) {
-        String searchTarget = normalize(
-                safe(transport.destinationName()) + " " + safe(transport.sourceDestination())
+        String searchTarget = StringUtils.normalize(
+                StringUtils.safe(transport.destinationName()) + " " + StringUtils.safe(transport.sourceDestination())
         );
 
         return keywords.stream().anyMatch(searchTarget::contains);
     }
 
     private Set<String> extractKeywords(String venueName) {
-        String normalizedVenue = normalize(venueName);
+        String normalizedVenue = StringUtils.normalize(venueName);
 
         Set<String> aliases = venueAliases(venueName);
         if (!aliases.isEmpty()) {
@@ -377,7 +354,7 @@ public class ConcertTransportService {
                         ),
                         mapping.aliases().stream()
                 )
-                .map(this::normalize)
+                .map(StringUtils::normalize)
                 .filter(keyword -> !keyword.isBlank())
                 .collect(Collectors.toSet());
     }
@@ -386,41 +363,19 @@ public class ConcertTransportService {
         return Comparator
                 .comparing((ConcertRecord concert) -> sortableDate(concert.localDate()))
                 .thenComparing(concert -> sortableTime(concert.localTime()))
-                .thenComparing(concert -> safe(concert.name()))
+                .thenComparing(concert -> StringUtils.safe(concert.name()))
                 .compare(a, b);
     }
 
     private String sortableDate(String value) {
-        return safe(value).isBlank() ? "9999-12-31" : value;
+        return StringUtils.safe(value).isBlank() ? "9999-12-31" : value;
     }
 
     private String sortableTime(String value) {
-        return safe(value).isBlank() ? "99:99:99" : value;
+        return StringUtils.safe(value).isBlank() ? "99:99:99" : value;
     }
 
     private String sortableDateTime(String value) {
-        return safe(value).isBlank() ? "9999-12-31T99:99:99" : value;
-    }
-
-    private String normalize(String text) {
-        if (text == null || text.isBlank()) {
-            return "";
-        }
-
-        return text.toLowerCase()
-                .replaceAll("[^a-z0-9 ]", " ")
-                .replaceAll("\\s+", " ")
-                .trim();
-    }
-
-    private String safe(String value) {
-        return value == null ? "" : value;
-    }
-
-    private int compareDuration(Integer a, Integer b) {
-        if (a == null && b == null) return 0;
-        if (a == null) return 1;
-        if (b == null) return -1;
-        return Integer.compare(a, b);
+        return StringUtils.safe(value).isBlank() ? "9999-12-31T99:99:99" : value;
     }
 }

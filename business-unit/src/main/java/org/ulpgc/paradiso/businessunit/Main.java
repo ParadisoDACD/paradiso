@@ -11,6 +11,7 @@ import org.ulpgc.paradiso.businessunit.recommendation.RouteScoringService;
 import org.ulpgc.paradiso.businessunit.service.BusinessIngestionService;
 import org.ulpgc.paradiso.businessunit.service.ConcertTransportService;
 import org.ulpgc.paradiso.businessunit.venue.VenueNormalizer;
+import org.ulpgc.paradiso.businessunit.messaging.ReconnectPolicy;
 
 import java.util.concurrent.CountDownLatch;
 
@@ -77,20 +78,24 @@ public class Main {
     }
 
     private static ReconnectingBusinessUnitSubscriber startSubscriberManager(BusinessUnitConfig config,
-                                                                             BusinessEventProcessor processor) {
+                                                                              BusinessEventProcessor processor) {
         if (!config.isSubscriberEnabled()) {
             System.out.println("[BusinessUnit] Subscriber deshabilitado (subscriber.enabled=false).");
             System.out.println("[BusinessUnit] La API funcionará solo con datos históricos.");
             return null;
         }
 
+        ReconnectPolicy reconnectPolicy = new ReconnectPolicy(
+                config.getSubscriberReconnectDelayMillis(),
+                config.getSubscriberReconnectMaxDelayMillis()
+        );
+
         ReconnectingBusinessUnitSubscriber subscriber = new ReconnectingBusinessUnitSubscriber(
                 config.getBrokerUrl(),
                 config.getClientId(),
                 config.getTopics(),
                 processor,
-                config.getSubscriberReconnectDelayMillis(),
-                config.getSubscriberReconnectMaxDelayMillis()
+                reconnectPolicy
         );
 
         subscriber.start();

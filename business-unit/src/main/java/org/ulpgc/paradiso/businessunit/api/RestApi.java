@@ -329,31 +329,8 @@ public class RestApi {
     }
 
     private void printEndpoints() {
-        System.out.println("[BusinessUnit] REST API disponible en http://localhost:" + port);
-
-        System.out.println("[BusinessUnit] Endpoints principales:");
-        System.out.println("  GET /status");
-        System.out.println("  GET /concerts");
-        System.out.println("  GET /concerts?query={text}");
-        System.out.println("  GET /concerts/upcoming");
-        System.out.println("  GET /concerts/upcoming?query={text}&limit={n}");
-        System.out.println("  GET /concerts/{id}");
-        System.out.println("  GET /concerts/{id}/routes");
-        System.out.println("  GET /concerts/{id}/routes?origin={origin}");
-        System.out.println("  GET /artists/{artist}/recommendations");
-        System.out.println("  GET /artists/{artist}/recommendations?origin={origin}");
-        System.out.println("  GET /recommendations");
-        System.out.println("  GET /recommendations?artist={artist}&origin={origin}&venue={venue}&fromDate={yyyy-mm-dd}&untilDate={yyyy-mm-dd}");
-        System.out.println("  GET /recommendations?page={page}&size={size}  (size máximo: " + MAX_PAGE_SIZE + ")");
-        System.out.println("  GET /origins");
-        System.out.println("  GET /venues");
-
-        System.out.println("[BusinessUnit] Endpoints de diagnóstico:");
-        System.out.println("  GET /transport");
-
-        System.out.println("[BusinessUnit] Endpoints legacy:");
-        System.out.println("  GET /concerts/{id}/transport");
-        System.out.println("  GET /recommendations/{id}");
+        System.out.printf("[BusinessUnit] REST API disponible en http://localhost:%d%n", port);
+        System.out.println("[BusinessUnit] Consulta GET / para ver el listado completo de endpoints.");
     }
 
     private record PaginationRequest(int page, int size) {

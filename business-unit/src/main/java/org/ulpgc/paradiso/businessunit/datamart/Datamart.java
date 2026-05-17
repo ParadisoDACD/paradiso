@@ -1,5 +1,7 @@
 package org.ulpgc.paradiso.businessunit.datamart;
 
+import org.ulpgc.paradiso.businessunit.utils.StringUtils;
+
 import java.time.Instant;
 import java.util.Comparator;
 import java.util.List;
@@ -34,7 +36,7 @@ public class Datamart {
         }
 
         addConcertToArtistIndex(record);
-        updateLastProcessedAt(record.ts());
+        updateLastProcessedAt(record.capturedAt());
     }
 
     public void upsertTransport(TransportRecord record) {
@@ -47,7 +49,7 @@ public class Datamart {
 
         addTransportToIndexes(record);
         registerOriginFromTransport(record);
-        updateLastProcessedAt(record.ts());
+        updateLastProcessedAt(record.capturedAt());
     }
 
     public void upsertOrigin(OriginRecord record) {
@@ -127,7 +129,7 @@ public class Datamart {
     }
 
     public List<ConcertRoutePlanRecord> plansByEventId(String eventId) {
-        return sortedPlans(plansByEventId.get(safe(eventId)));
+        return sortedPlans(plansByEventId.get(StringUtils.safe(eventId)));
     }
 
     public List<ConcertRoutePlanRecord> plansByArtist(String artist) {
@@ -135,7 +137,7 @@ public class Datamart {
     }
 
     public List<ConcertRoutePlanRecord> plansByOrigin(String originKey) {
-        return sortedPlans(plansByOrigin.get(safe(originKey)));
+        return sortedPlans(plansByOrigin.get(StringUtils.safe(originKey)));
     }
 
     public List<ConcertRoutePlanRecord> plansByArtistAndOrigin(String artist, String originKey) {
@@ -189,7 +191,7 @@ public class Datamart {
     }
 
     private void registerOriginFromTransport(TransportRecord record) {
-        String originKey = safe(record.sourceOrigin());
+        String originKey = StringUtils.safe(record.sourceOrigin());
 
         if (originKey.isBlank()) {
             return;
@@ -197,7 +199,7 @@ public class Datamart {
 
         originsByKey.putIfAbsent(originKey, new OriginRecord(
                 originKey,
-                safe(record.originName()).isBlank() ? originKey : record.originName(),
+                StringUtils.safe(record.originName()).isBlank() ? originKey : record.originName(),
                 "",
                 "London",
                 true
@@ -213,9 +215,9 @@ public class Datamart {
     }
 
     private void addPlanToIndexes(ConcertRoutePlanRecord plan) {
-        addToIndex(plansByEventId, safe(plan.eventId()), plan);
+        addToIndex(plansByEventId, StringUtils.safe(plan.eventId()), plan);
         addToIndex(plansByArtist, normalizeIndexKey(plan.artistName()), plan);
-        addToIndex(plansByOrigin, safe(plan.originKey()), plan);
+        addToIndex(plansByOrigin, StringUtils.safe(plan.originKey()), plan);
         addToIndex(plansByArtistAndOrigin, compositeKey(normalizeIndexKey(plan.artistName()), plan.originKey()), plan);
         addToIndex(plansByOriginAndDestination, compositeKey(plan.originKey(), plan.destinationStopKey()), plan);
     }
@@ -228,9 +230,9 @@ public class Datamart {
     }
 
     private void removePlanFromIndexes(ConcertRoutePlanRecord plan) {
-        removeFromIndex(plansByEventId, safe(plan.eventId()), plan.planId());
+        removeFromIndex(plansByEventId, StringUtils.safe(plan.eventId()), plan.planId());
         removeFromIndex(plansByArtist, normalizeIndexKey(plan.artistName()), plan.planId());
-        removeFromIndex(plansByOrigin, safe(plan.originKey()), plan.planId());
+        removeFromIndex(plansByOrigin, StringUtils.safe(plan.originKey()), plan.planId());
         removeFromIndex(plansByArtistAndOrigin, compositeKey(normalizeIndexKey(plan.artistName()), plan.originKey()), plan.planId());
         removeFromIndex(plansByOriginAndDestination, compositeKey(plan.originKey(), plan.destinationStopKey()), plan.planId());
     }
@@ -307,8 +309,8 @@ public class Datamart {
     }
 
     private String compositeKey(String left, String right) {
-        String normalizedLeft = safe(left);
-        String normalizedRight = safe(right);
+        String normalizedLeft = StringUtils.safe(left);
+        String normalizedRight = StringUtils.safe(right);
 
         if (normalizedLeft.isBlank() || normalizedRight.isBlank()) {
             return "";
@@ -318,24 +320,28 @@ public class Datamart {
     }
 
     private String normalizeIndexKey(String value) {
-        return safe(value).toLowerCase()
+        return StringUtils.safe(value).toLowerCase()
                 .replaceAll("[^a-z0-9 ]", " ")
                 .replaceAll("\\s+", " ")
                 .trim();
     }
 
-    private String safe(String value) {
-        return value == null ? "" : value;
-    }
-
-    private void updateLastProcessedAt(String ts) {
-        if (ts == null || ts.isBlank()) return;
-
-        try {
-            Instant parsed = Instant.parse(ts);
+    private void updateLastProcessedAt(String capturedAt) {
+        tryParseInstant(capturedAt).ifPresent(parsed -> {
             if (lastProcessedAt == null || parsed.isAfter(lastProcessedAt)) {
                 lastProcessedAt = parsed;
             }
-        } catch (Exception ignored) {}
+        });
+    }
+
+    private Optional<Instant> tryParseInstant(String value) {
+        if (StringUtils.safe(value).isBlank()) {
+            return Optional.empty();
+        }
+        try {
+            return Optional.of(Instant.parse(value));
+        } catch (Exception ignored) {
+            return Optional.empty();
+        }
     }
 }

@@ -1,7 +1,8 @@
 package org.ulpgc.paradiso.businessunit.venue;
 
+import org.ulpgc.paradiso.businessunit.utils.StringUtils;
+
 import java.util.List;
-import java.util.Locale;
 import java.util.Optional;
 import java.util.Set;
 
@@ -18,7 +19,7 @@ public class VenueNormalizer {
     }
 
     public Optional<VenueStopMapping> findMapping(String venueName) {
-        String normalizedVenueName = normalize(venueName);
+        String normalizedVenueName = StringUtils.normalize(venueName);
 
         if (normalizedVenueName.isBlank()) {
             return Optional.empty();
@@ -35,7 +36,7 @@ public class VenueNormalizer {
 
     private boolean matches(VenueStopMapping mapping, String normalizedVenueName) {
         return mapping.aliases().stream()
-                .map(this::normalize)
+                .map(StringUtils::normalize)
                 .anyMatch(alias -> !alias.isBlank()
                         && (normalizedVenueName.equals(alias)
                         || normalizedVenueName.contains(alias)
@@ -108,16 +109,5 @@ public class VenueNormalizer {
                         )
                 )
         );
-    }
-
-    private String normalize(String value) {
-        if (value == null || value.isBlank()) {
-            return "";
-        }
-
-        return value.toLowerCase(Locale.ROOT)
-                .replaceAll("[^a-z0-9 ]", " ")
-                .replaceAll("\\s+", " ")
-                .trim();
     }
 }
