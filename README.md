@@ -231,7 +231,7 @@ api.key=TU_CLAVE_TICKETMASTER
 countries=GB
 cities=London
 categories=music,festival
-lookahead.days=14
+lookahead.days=60
 capture.period.minutes=60
 broker.url=tcp://localhost:61616
 topic.name=TicketmasterEvent
@@ -322,6 +322,8 @@ topics=TicketmasterEvent,TflJourney
 eventstore.path=eventstore
 api.port=7000
 subscriber.enabled=true
+subscriber.reconnect.delay.ms=5000
+subscriber.reconnect.max.delay.ms=30000
 ```
 
 ---
@@ -353,8 +355,9 @@ El datamart almacena:
 | `ConcertRecord` | Evento procedente de Ticketmaster |
 | `TransportRecord` | Ruta procedente de TfL |
 | `OriginRecord` | Origen disponible para recomendaciones |
-| `VenueStopMapping` | Relación entre venue y parada TfL cercana |
 | `ConcertRoutePlanRecord` | Recomendación precalculada para un concierto y una ruta |
+
+La relación entre venues de Ticketmaster y paradas cercanas de TfL se gestiona mediante `VenueNormalizer` y `VenueStopMapping`, que permiten construir las recomendaciones compatibles.
 
 Además, mantiene índices para consultar rápidamente por:
 
@@ -408,7 +411,7 @@ El empaquetado genera los JAR ejecutables de los módulos.
 
 ### 2. Arrancar ActiveMQ Classic
 
-Desde la carpeta de instalación de ActiveMQ:
+Desde la carpeta de instalación de ActiveMQ. Ejemplo en Windows:
 
 ```powershell
 cd C:\apache-activemq-5.19.6
@@ -548,6 +551,8 @@ Consultar rutas para un concierto concreto:
 ```powershell
 Invoke-RestMethod "http://localhost:7000/concerts/G5vHZbSELNbiT/routes?page=0&size=5" | ConvertTo-Json -Depth 10
 ```
+
+Los identificadores de conciertos de los ejemplos son orientativos. Para una prueba real, primero consulta `/concerts` o `/concerts/upcoming` y utiliza un `externalEventId` existente en tu datamart.
 
 Consultar recomendaciones por artista:
 
