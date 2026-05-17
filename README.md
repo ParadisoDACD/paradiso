@@ -252,18 +252,17 @@ Fichero local esperado:
 tfl-feeder/src/main/resources/tfl.properties
 ```
 
-El feeder de TfL trabaja con catálogos de orígenes y destinos. A partir de ellos genera automáticamente las combinaciones `origen × destino`.
-
+El feeder de TfL trabaja con catálogos de orígenes y destinos. Los orígenes representan estaciones relevantes de Londres desde las que un usuario podría iniciar su viaje. Los destinos se mantienen limitados a paradas cercanas a venues musicales usados por el proyecto, para que las rutas capturadas estén alineadas con las recomendaciones generadas por la unidad de negocio.
 Ejemplo de configuración:
 
 ```properties
 app.key=TU_CLAVE_TFL
 origins=KingsCross,Victoria,Waterloo,Paddington,LondonBridge,LiverpoolStreet,Euston,Marylebone,CharingCross,Stratford,CanaryWharf,BakerStreet,OxfordCircus,PiccadillyCircus,LeicesterSquare,TottenhamCourtRoad,Farringdon,Blackfriars,Westminster,Bank,Moorgate,GreenPark,Holborn,SouthKensington,Hammersmith,ShepherdsBush,Whitechapel,CamdenTown,NottingHillGate,Heathrow
 destinations=O2Arena,WembleyPark,BrixtonAcademy,RoyalAlbertHall,AlexandraPalace
-capture.times=1530,1700,1830,2000
+capture.times=1530,1600,1630,1700,1730,1800,1815,1830,1845,1900,1915,1930,1945,2000,2030
 capture.start.day.offset=0
-capture.days.ahead=3
-request.sleep.ms=300
+capture.days.ahead=10
+request.sleep.ms=150
 http.connect.timeout.seconds=10
 http.read.timeout.seconds=45
 http.call.timeout.seconds=60
@@ -491,30 +490,38 @@ Ejemplo orientativo de respuesta:
 
 ### Endpoints principales
 
-Estos son los endpoints recomendados para usar la funcionalidad final del Sprint 3. Consultan el datamart y las recomendaciones precalculadas cuando aplica.
-
 | Método | Endpoint | Descripción |
 |---|---|---|
-| GET | `/status` | Estado del datamart |
-| GET | `/concerts` | Lista de conciertos |
-| GET | `/concerts?query={texto}` | Búsqueda de conciertos |
+| GET | `/status` | Estado general del datamart y de la unidad de negocio |
+| GET | `/concerts` | Lista de conciertos disponibles en el datamart |
+| GET | `/concerts?query={texto}` | Búsqueda de conciertos por texto |
 | GET | `/concerts/upcoming` | Próximos conciertos |
+| GET | `/concerts/upcoming?query={text}&limit={n}` | Próximos conciertos filtrados por texto y límite |
 | GET | `/concerts/{id}` | Detalle de un concierto |
-| GET | `/origins` | Orígenes disponibles |
-| GET | `/venues` | Venues normalizados y paradas asociadas |
-| GET | `/recommendations` | Consulta general de recomendaciones |
-| GET | `/concerts/{id}/routes` | Rutas precalculadas para un concierto |
+| GET | `/concerts/{id}/routes` | Rutas recomendadas precalculadas para un concierto |
+| GET | `/concerts/{id}/routes?origin={origin}` | Rutas recomendadas para un concierto desde un origen concreto |
 | GET | `/artists/{artist}/recommendations` | Recomendaciones por artista |
+| GET | `/artists/{artist}/recommendations?origin={origin}` | Recomendaciones por artista desde un origen concreto |
+| GET | `/recommendations` | Consulta general de recomendaciones precalculadas |
+| GET | `/recommendations?artist={artist}&origin={origin}&venue={venue}&fromDate={yyyy-mm-dd}&untilDate={yyyy-mm-dd}` | Recomendaciones filtradas |
+| GET | `/recommendations?page={page}&size={size}` | Recomendaciones paginadas |
+| GET | `/origins` | Orígenes TfL disponibles |
+| GET | `/venues` | Venues conocidos y paradas TfL asociadas |
 
-### Endpoints de diagnóstico y compatibilidad
-
-Estos endpoints se mantienen para inspección o compatibilidad, pero no son el flujo principal recomendado para la demo final.
+### Endpoint de diagnóstico
 
 | Método | Endpoint | Descripción |
 |---|---|---|
-| GET | `/transport` | Inspección de rutas TfL almacenadas en el datamart |
-| GET | `/concerts/{id}/transport` | Endpoint legacy para consultar transporte de un concierto |
-| GET | `/recommendations/{id}` | Endpoint legacy equivalente a recomendaciones por identificador de concierto |
+| GET | `/transport` | Inspección de rutas TfL cargadas en el datamart |
+
+### Endpoints legacy
+
+| Método | Endpoint | Descripción |
+|---|---|---|
+| GET | `/concerts/{id}/transport` | Endpoint mantenido por compatibilidad |
+| GET | `/recommendations/{id}` | Endpoint mantenido por compatibilidad |
+
+Los endpoints legacy se conservan para no romper compatibilidad, pero el flujo principal del Sprint 3 debe probarse mediante `/concerts/{id}/routes`, `/artists/{artist}/recommendations` y `/recommendations`.
 
 ### Ejemplos de consultas
 
@@ -573,6 +580,12 @@ Invoke-RestMethod "http://localhost:7000/recommendations?origin=Paddington&page=
   "score": 1.0,
   "matchType": "EXACT_VENUE_STOP"
 }
+```
+
+Consultar recomendaciones filtradas por artista, origen y venue:
+
+```powershell
+Invoke-RestMethod "http://localhost:7000/recommendations?artist=Joe%20Bonamassa&origin=Paddington&venue=Royal%20Albert%20Hall&page=0&size=5" | ConvertTo-Json -Depth 10
 ```
 
 ---

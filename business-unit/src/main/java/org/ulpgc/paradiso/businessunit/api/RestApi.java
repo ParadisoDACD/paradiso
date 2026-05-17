@@ -56,31 +56,26 @@ public class RestApi {
     }
 
     private void registerRootEndpoint() {
-        app.get("/", ctx -> json(ctx, Map.of(
-                "application", "Paradiso Business Unit",
-                "description", "API REST para consultar conciertos en Londres y recomendaciones de transporte TfL precalculadas",
-                "userFlow", Map.of(
-                        "1", "GET /concerts/upcoming",
-                        "2", "Elegir externalEventId o artista",
-                        "3", "GET /concerts/{id}/routes o GET /artists/{artist}/recommendations"
-                ),
+        app.get("/", ctx -> ctx.json(Map.of(
+                "name", "Paradiso Business Unit",
+                "description", "API REST para consultar conciertos, rutas y recomendaciones precalculadas desde el datamart.",
                 "mainEndpoints", Map.of(
                         "status", "/status",
                         "concerts", "/concerts",
                         "upcomingConcerts", "/concerts/upcoming",
                         "concertById", "/concerts/{id}",
-                        "origins", "/origins",
-                        "venues", "/venues",
-                        "recommendations", "/recommendations?artist={artist}&origin={origin}",
                         "routesByConcert", "/concerts/{id}/routes",
-                        "recommendationsByArtist", "/artists/{artist}/recommendations"
+                        "recommendationsByArtist", "/artists/{artist}/recommendations",
+                        "recommendations", "/recommendations",
+                        "origins", "/origins",
+                        "venues", "/venues"
                 ),
                 "diagnosticEndpoints", Map.of(
                         "transport", "/transport"
                 ),
                 "legacyEndpoints", Map.of(
                         "transportByConcert", "/concerts/{id}/transport",
-                        "recommendationsById", "/recommendations/{id}"
+                        "recommendationById", "/recommendations/{id}"
                 )
         )));
     }
@@ -335,7 +330,8 @@ public class RestApi {
 
     private void printEndpoints() {
         System.out.println("[BusinessUnit] REST API disponible en http://localhost:" + port);
-        System.out.println("[BusinessUnit] Endpoints:");
+
+        System.out.println("[BusinessUnit] Endpoints principales:");
         System.out.println("  GET /status");
         System.out.println("  GET /concerts");
         System.out.println("  GET /concerts?query={text}");
@@ -351,9 +347,13 @@ public class RestApi {
         System.out.println("  GET /recommendations?page={page}&size={size}  (size máximo: " + MAX_PAGE_SIZE + ")");
         System.out.println("  GET /origins");
         System.out.println("  GET /venues");
-        System.out.println("  GET /transport                  [diagnóstico]");
-        System.out.println("  GET /concerts/{id}/transport  [legacy]");
-        System.out.println("  GET /recommendations/{id}      [legacy]");
+
+        System.out.println("[BusinessUnit] Endpoints de diagnóstico:");
+        System.out.println("  GET /transport");
+
+        System.out.println("[BusinessUnit] Endpoints legacy:");
+        System.out.println("  GET /concerts/{id}/transport");
+        System.out.println("  GET /recommendations/{id}");
     }
 
     private record PaginationRequest(int page, int size) {

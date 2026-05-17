@@ -17,4 +17,3 @@ capture.period.minutes=90
 broker.url=tcp://localhost:61616
 topic.name=TflJourney
 source.system=tfl-feeder
-# Nota: sqlite.path ya no se usa en el flujo principal del Sprint 2
