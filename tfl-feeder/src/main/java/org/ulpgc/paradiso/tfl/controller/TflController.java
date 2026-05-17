@@ -159,26 +159,29 @@ public class TflController {
                                      ResolvedRoute route,
                                      String captureTime,
                                      CaptureStats stats) {
-        boolean shouldContinue = true;
-
         try {
-            stats.registerRequest();
-
-            List<TflJourney> journeys = fetchJourneys(context, day, route, captureTime);
-
-            publishJourneys(journeys);
-            stats.registerPublished(journeys.size());
-
-            printRouteSummary(day, route, captureTime, journeys.size());
+            return captureAndPublish(context, day, route, captureTime, stats);
         } catch (InterruptedException exception) {
             Thread.currentThread().interrupt();
             System.err.println("[TfL] Captura interrumpida.");
-            shouldContinue = false;
+            return false;
         } catch (Exception exception) {
             printRouteError(day, route, captureTime, exception);
+            return pauseBetweenRequests();
         }
+    }
 
-        return shouldContinue && pauseBetweenRequests();
+    private boolean captureAndPublish(CaptureContext context,
+                                      CaptureDay day,
+                                      ResolvedRoute route,
+                                      String captureTime,
+                                      CaptureStats stats) throws Exception {
+        stats.registerRequest();
+        List<TflJourney> journeys = fetchJourneys(context, day, route, captureTime);
+        publishJourneys(journeys);
+        stats.registerPublished(journeys.size());
+        printRouteSummary(day, route, captureTime, journeys.size());
+        return pauseBetweenRequests();
     }
 
     private List<TflJourney> fetchJourneys(CaptureContext context,

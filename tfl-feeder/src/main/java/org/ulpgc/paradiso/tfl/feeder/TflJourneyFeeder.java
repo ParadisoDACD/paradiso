@@ -12,8 +12,7 @@ import java.util.concurrent.TimeUnit;
 
 public class TflJourneyFeeder implements JourneyFeeder {
 
-    private static final String BASE_URL =
-            "https://api.tfl.gov.uk/Journey/JourneyResults";
+    private static final String BASE_URL = "https://api.tfl.gov.uk/Journey/JourneyResults";
 
     private final String appKey;
     private final OkHttpClient httpClient;
@@ -21,45 +20,32 @@ public class TflJourneyFeeder implements JourneyFeeder {
     private final long retryBackoffMillis;
 
     public TflJourneyFeeder(TflConfig config) {
-        this(
-                config.getAppKey(),
-                config.getHttpConnectTimeoutSeconds(),
-                config.getHttpReadTimeoutSeconds(),
-                config.getHttpCallTimeoutSeconds(),
-                config.getRequestMaxRetries(),
-                config.getRequestRetryBackoffMillis()
-        );
+        this(config.getAppKey(), httpConfigFrom(config));
     }
 
     public TflJourneyFeeder(String appKey) {
-        this(appKey, 10, 45, 60, 2, 1000);
+        this(appKey, HttpConfig.defaults());
     }
 
-    private TflJourneyFeeder(String appKey,
-                             int connectTimeoutSeconds,
-                             int readTimeoutSeconds,
-                             int callTimeoutSeconds,
-                             int maxRetries,
-                             long retryBackoffMillis) {
+    private TflJourneyFeeder(String appKey, HttpConfig config) {
         this.appKey = appKey;
-        this.maxRetries = maxRetries;
-        this.retryBackoffMillis = retryBackoffMillis;
+        this.maxRetries = config.maxRetries();
+        this.retryBackoffMillis = config.retryBackoffMillis();
         this.httpClient = new OkHttpClient.Builder()
-                .connectTimeout(connectTimeoutSeconds, TimeUnit.SECONDS)
-                .readTimeout(readTimeoutSeconds, TimeUnit.SECONDS)
-                .callTimeout(callTimeoutSeconds, TimeUnit.SECONDS)
+                .connectTimeout(config.connectTimeoutSeconds(), TimeUnit.SECONDS)
+                .readTimeout(config.readTimeoutSeconds(), TimeUnit.SECONDS)
+                .callTimeout(config.callTimeoutSeconds(), TimeUnit.SECONDS)
                 .build();
     }
 
     @Override
     public String fetchRawJourneys(TflJourneyRequest request) throws Exception {
-        Request httpRequest = new Request.Builder()
-                .url(buildUrl(request))
-                .get()
-                .build();
+        Request httpRequest = new Request.Builder().url(buildUrl(request)).get().build();
+        return executeWithRetry(httpRequest, request);
+    }
 
+    private String executeWithRetry(Request httpRequest, TflJourneyRequest request) throws Exception {
         Exception lastFailure = null;
-
         for (int attempt = 0; attempt <= maxRetries; attempt++) {
             try {
                 return executeRequest(httpRequest, request);
@@ -73,79 +59,72 @@ public class TflJourneyFeeder implements JourneyFeeder {
                 lastFailure = exception;
                 logRetry(exception.getMessage(), attempt);
             }
-
-            if (attempt < maxRetries) {
-                sleepBeforeRetry(attempt);
-            }
+            if (attempt < maxRetries) sleepBeforeRetry(attempt);
         }
-
-        throw new Exception("TfL no respondió tras "
-                + (maxRetries + 1)
-                + " intentos: "
+        throw new Exception("TfL no respondió tras " + (maxRetries + 1) + " intentos: "
                 + (lastFailure != null ? lastFailure.getMessage() : "error desconocido"));
     }
 
     private String buildUrl(TflJourneyRequest request) {
         return BASE_URL
-                + "/" + request.fromNaptan()
-                + "/to/" + request.toNaptan()
+                + "/" + request.fromNaptan() + "/to/" + request.toNaptan()
                 + "?app_key=" + appKey
-                + "&date=" + request.date()
-                + "&time=" + request.time()
-                + "&timeIs=Departing"
-                + "&journeyPreference=LeastTime"
+                + "&date=" + request.date() + "&time=" + request.time()
+                + "&timeIs=Departing&journeyPreference=LeastTime"
                 + "&mode=tube,bus,overground,elizabeth-line,dlr,tram,national-rail";
     }
 
-    private String executeRequest(Request httpRequest,
-                                  TflJourneyRequest request) throws Exception {
+    private String executeRequest(Request httpRequest, TflJourneyRequest request) throws Exception {
         try (Response response = httpClient.newCall(httpRequest).execute()) {
-            int code = response.code();
-
-            if (code == 429) {
-                throw new Exception("Límite de peticiones TfL alcanzado (429). "
-                        + "Reduce el ritmo de captura o aumenta request.sleep.ms.");
-            }
-
-            if (code == 401 || code == 403) {
-                throw new Exception("Autenticación TfL fallida (" + code
-                        + "). Verifica app.key.");
-            }
-
-            if (code == 300 || code == 404) {
-                return "{}";
-            }
-
-            if (code >= 500) {
-                throw new RetryableTflException("HTTP " + code + " temporal en TfL");
-            }
-
-            if (!response.isSuccessful()) {
-                String body = response.body() != null ? response.body().string() : "";
-                throw new Exception("HTTP " + code
-                        + " en TfL [" + request.fromNaptan() + " -> " + request.toNaptan() + "]: " + body);
-            }
-
-            return Objects.requireNonNull(response.body()).string();
+            return handleResponse(response, request);
         }
+    }
+
+    private String handleResponse(Response response, TflJourneyRequest request) throws Exception {
+        int code = response.code();
+        if (code == 429) throw new Exception("Límite de peticiones TfL alcanzado (429).");
+        if (code == 401 || code == 403) throw new Exception("Autenticación TfL fallida (" + code + ").");
+        if (code == 300 || code == 404) return "{}";
+        if (code >= 500) throw new RetryableTflException("HTTP " + code + " temporal en TfL");
+        if (!response.isSuccessful()) {
+            String body = response.body() != null ? response.body().string() : "";
+            throw new Exception("HTTP " + code + " en TfL ["
+                    + request.fromNaptan() + " -> " + request.toNaptan() + "]: " + body);
+        }
+        return Objects.requireNonNull(response.body()).string();
     }
 
     private void logRetry(String reason, int attempt) {
-        if (attempt < maxRetries) {
+        if (attempt < maxRetries)
             System.err.println("  [TfL] Aviso: " + reason
-                    + ". Reintentando (" + (attempt + 1)
-                    + "/" + maxRetries + ")...");
-        }
+                    + ". Reintentando (" + (attempt + 1) + "/" + maxRetries + ")...");
     }
 
     private void sleepBeforeRetry(int attempt) throws InterruptedException {
-        long delay = retryBackoffMillis * (attempt + 1);
-        Thread.sleep(delay);
+        Thread.sleep(retryBackoffMillis * (attempt + 1));
+    }
+
+    private static HttpConfig httpConfigFrom(TflConfig config) {
+        return new HttpConfig(
+                config.getHttpConnectTimeoutSeconds(),
+                config.getHttpReadTimeoutSeconds(),
+                config.getHttpCallTimeoutSeconds(),
+                config.getRequestMaxRetries(),
+                config.getRequestRetryBackoffMillis()
+        );
+    }
+
+    private record HttpConfig(int connectTimeoutSeconds,
+                              int readTimeoutSeconds,
+                              int callTimeoutSeconds,
+                              int maxRetries,
+                              long retryBackoffMillis) {
+        static HttpConfig defaults() {
+            return new HttpConfig(10, 45, 60, 2, 1000);
+        }
     }
 
     private static class RetryableTflException extends Exception {
-        private RetryableTflException(String message) {
-            super(message);
-        }
+        private RetryableTflException(String message) { super(message); }
     }
 }
