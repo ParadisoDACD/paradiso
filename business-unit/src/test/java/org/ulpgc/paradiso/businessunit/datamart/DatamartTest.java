@@ -1,6 +1,8 @@
 package org.ulpgc.paradiso.businessunit.datamart;
 
 import org.junit.jupiter.api.Test;
+import org.ulpgc.paradiso.businessunit.recommendation.MatchType;
+
 import java.util.List;
 
 import static org.junit.jupiter.api.Assertions.*;
@@ -80,8 +82,8 @@ class DatamartTest {
                 2,
                 "tube",
                 score,
-                "EXACT_VENUE_STOP",
-                "2026-05-14T09:00:00Z"
+                MatchType.EXACT_VENUE_STOP,
+                "2026-05-14T12:00:00Z"
         );
     }
 

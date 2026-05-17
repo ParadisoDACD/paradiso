@@ -22,9 +22,7 @@ public class BusinessIngestionService {
         if (concert == null) {
             return;
         }
-
         datamart.upsertConcert(concert);
-
         List<ConcertRoutePlanRecord> plans = recommendationBuilder.buildPlansForConcert(concert);
         datamart.replacePlansForEvent(concert.externalEventId(), plans);
     }
@@ -33,9 +31,7 @@ public class BusinessIngestionService {
         if (transport == null) {
             return;
         }
-
         datamart.upsertTransport(transport);
-
         List<ConcertRoutePlanRecord> plans = recommendationBuilder.buildPlansForTransport(transport);
         datamart.upsertPlans(plans);
     }

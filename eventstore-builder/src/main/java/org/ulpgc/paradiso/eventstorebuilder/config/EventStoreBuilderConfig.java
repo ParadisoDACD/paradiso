@@ -13,14 +13,12 @@ public class EventStoreBuilderConfig {
     public EventStoreBuilderConfig() {
         try (InputStream in = getClass().getClassLoader()
                 .getResourceAsStream("eventstore-builder.properties")) {
-
             if (in == null) {
                 throw new RuntimeException(
                         "eventstore-builder.properties no encontrado. " +
                                 "Copia eventstore-builder.properties.example y renómbralo."
                 );
             }
-
             props.load(in);
         } catch (IOException e) {
             throw new RuntimeException("Error leyendo eventstore-builder.properties", e);

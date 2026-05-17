@@ -33,11 +33,9 @@ public class BusinessEventProcessor {
 
     private void processSafely(String topic, String jsonLine) {
         JsonObject root = parseRoot(jsonLine);
-
         if (!hasPayload(root)) {
             return;
         }
-
         dispatch(topic, root.getAsJsonObject("payload"), getString(root, "ts"));
     }
 
@@ -57,27 +55,25 @@ public class BusinessEventProcessor {
             ingestionService.ingestConcert(toConcert(payload, timestamp));
             return;
         }
-
         if (TFL_TOPIC.equals(topic)) {
             ingestionService.ingestTransport(toTransport(payload, timestamp));
         }
     }
 
     private ConcertRecord toConcert(JsonObject payload, String capturedAt) {
-        String externalEventId   = getString(payload, "externalEventId");
-        String name              = getString(payload, "name");
+        String externalEventId = getString(payload, "externalEventId");
+        String name = getString(payload, "name");
         String classificationName = getString(payload, "classificationName");
-        String segment           = getString(payload, "segment");
-        String genre             = getString(payload, "genre");
-        String city              = getString(payload, "city");
-        String countryCode       = getString(payload, "countryCode");
-        String venueName         = getString(payload, "venueName");
-        String eventUrl          = getString(payload, "eventUrl");
-        String localDate         = getString(payload, "localDate");
-        String localTime         = getString(payload, "localTime");
-        String dateTimeIso       = getString(payload, "dateTimeIso");
-        String sourceCategory    = getString(payload, "sourceCategory");
-
+        String segment = getString(payload, "segment");
+        String genre = getString(payload, "genre");
+        String city = getString(payload, "city");
+        String countryCode = getString(payload, "countryCode");
+        String venueName = getString(payload, "venueName");
+        String eventUrl = getString(payload, "eventUrl");
+        String localDate = getString(payload, "localDate");
+        String localTime = getString(payload, "localTime");
+        String dateTimeIso = getString(payload, "dateTimeIso");
+        String sourceCategory = getString(payload, "sourceCategory");
         return new ConcertRecord(
                 externalEventId, name, classificationName, segment, genre,
                 city, countryCode, venueName, eventUrl, localDate, localTime,
@@ -86,20 +82,19 @@ public class BusinessEventProcessor {
     }
 
     private TransportRecord toTransport(JsonObject payload, String capturedAt) {
-        String journeyHash    = getString(payload, "journeyHash");
-        String captureDate    = getString(payload, "captureDate");
-        String captureTime    = getString(payload, "captureTime");
-        String startDateTime  = getString(payload, "startDateTime");
+        String journeyHash = getString(payload, "journeyHash");
+        String captureDate = getString(payload, "captureDate");
+        String captureTime = getString(payload, "captureTime");
+        String startDateTime = getString(payload, "startDateTime");
         String arrivalDateTime = getString(payload, "arrivalDateTime");
-        String originName     = getString(payload, "originName");
+        String originName = getString(payload, "originName");
         String destinationName = getString(payload, "destinationName");
         Integer durationMinutes = getInteger(payload, "durationMinutes");
-        Integer numberOfLegs  = getInteger(payload, "numberOfLegs");
-        String firstLegMode   = getString(payload, "firstLegMode");
-        String sourceOrigin   = getString(payload, "sourceOrigin");
+        Integer numberOfLegs = getInteger(payload, "numberOfLegs");
+        String firstLegMode = getString(payload, "firstLegMode");
+        String sourceOrigin = getString(payload, "sourceOrigin");
         String sourceDestination = getString(payload, "sourceDestination");
         String journeyKeyValue = journeyKey(journeyHash, captureDate, captureTime, startDateTime, arrivalDateTime);
-
         return new TransportRecord(
                 journeyKeyValue, journeyHash, originName, destinationName,
                 startDateTime, arrivalDateTime, durationMinutes, numberOfLegs,
@@ -113,13 +108,7 @@ public class BusinessEventProcessor {
                               String captureTime,
                               String startDateTime,
                               String arrivalDateTime) {
-        return Stream.of(
-                        journeyHash,
-                        captureDate,
-                        captureTime,
-                        startDateTime,
-                        arrivalDateTime
-                )
+        return Stream.of(journeyHash, captureDate, captureTime, startDateTime, arrivalDateTime)
                 .filter(Objects::nonNull)
                 .filter(value -> !value.isBlank())
                 .collect(Collectors.joining("|"));

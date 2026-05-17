@@ -110,13 +110,11 @@ public class TflVenueResolver {
 
     public static String resolve(String logicalName) {
         String id = resolveOrNull(logicalName);
-
         if (id == null) {
             throw new IllegalArgumentException(
                     "Nombre '" + logicalName + "' sin NaPTAN ID en TflVenueResolver. " +
                             "Búscalo en la API y añádelo al mapa.");
         }
-
         return id;
     }
 
@@ -132,17 +130,14 @@ public class TflVenueResolver {
         if (logicalName == null || logicalName.isBlank()) {
             return null;
         }
-
         String direct = NAPTAN_IDS.get(logicalName.trim());
         if (direct != null) {
             return direct;
         }
-
         String canonicalName = NORMALIZED_TO_LOGICAL_NAME.get(normalize(logicalName));
         if (canonicalName == null) {
             return null;
         }
-
         return NAPTAN_IDS.get(canonicalName);
     }
 
@@ -156,7 +151,6 @@ public class TflVenueResolver {
     }
 
     private static String normalize(String value) {
-        return value.toLowerCase(Locale.ROOT)
-                .replaceAll("[^a-z0-9]", "");
+        return value.toLowerCase(Locale.ROOT).replaceAll("[^a-z0-9]", "");
     }
 }

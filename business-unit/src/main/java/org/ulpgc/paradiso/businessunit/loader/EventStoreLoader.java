@@ -27,9 +27,7 @@ public class EventStoreLoader {
             printMissingEventStore();
             return 0;
         }
-
         int total = loadTopics();
-
         System.out.println("[EventStoreLoader] Carga histórica completada. Total: " + total);
         return total;
     }
@@ -47,13 +45,11 @@ public class EventStoreLoader {
 
     private int loadTopics() {
         int total = 0;
-
         for (String topic : topics) {
             int count = loadTopic(topic);
             printTopicSummary(topic, count);
             total += count;
         }
-
         return total;
     }
 
@@ -64,12 +60,10 @@ public class EventStoreLoader {
 
     private int loadTopic(String topic) {
         Path topicPath = eventstoreRoot.resolve(topic);
-
         if (!Files.exists(topicPath)) {
             System.out.println("[EventStoreLoader] Sin histórico para topic: " + topic);
             return 0;
         }
-
         return loadTopicFiles(topic, topicPath);
     }
 
@@ -99,11 +93,9 @@ public class EventStoreLoader {
 
     private int loadFiles(String topic, List<Path> files) {
         int count = 0;
-
         for (Path file : files) {
             count += loadFile(topic, file);
         }
-
         return count;
     }
 
@@ -120,11 +112,9 @@ public class EventStoreLoader {
     private int loadLines(String topic, BufferedReader reader) throws Exception {
         int count = 0;
         String line;
-
         while ((line = reader.readLine()) != null) {
             count += processLine(topic, line);
         }
-
         return count;
     }
 
@@ -132,7 +122,6 @@ public class EventStoreLoader {
         if (line.isBlank()) {
             return 0;
         }
-
         processor.process(topic, line);
         return 1;
     }

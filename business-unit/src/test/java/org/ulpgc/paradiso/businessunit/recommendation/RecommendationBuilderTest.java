@@ -32,12 +32,14 @@ class RecommendationBuilderTest {
 
         List<ConcertRoutePlanRecord> plans = builder.buildPlansForConcert(concert("event1", "Coldplay", "The O2"));
 
+        ConcertRoutePlanRecord plan = plans.get(0);
+
         assertEquals(1, plans.size());
         assertEquals("event1", plans.getFirst().eventId());
         assertEquals("Victoria", plans.getFirst().originKey());
         assertEquals("O2Arena", plans.getFirst().destinationStopKey());
         assertEquals("route-o2", plans.getFirst().journeyKey());
-        assertEquals("EXACT_VENUE_STOP", plans.getFirst().matchType());
+        assertEquals(MatchType.EXACT_VENUE_STOP, plan.matchType());
     }
 
     @Test

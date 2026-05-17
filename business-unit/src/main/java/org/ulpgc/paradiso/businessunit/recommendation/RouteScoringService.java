@@ -19,15 +19,12 @@ public class RouteScoringService {
 
     public double score(ConcertRecord concert, TransportRecord transport, VenueStopMapping mapping) {
         double score = 1.0;
-
         score -= durationPenalty(transport.durationMinutes());
         score -= legsPenalty(transport.numberOfLegs());
         score -= arrivalPenalty(concert, transport);
-
         if (isExactStopMatch(transport, mapping)) {
             score += 0.20;
         }
-
         return round(clamp(score));
     }
 
@@ -35,7 +32,6 @@ public class RouteScoringService {
         if (durationMinutes == null || durationMinutes <= 0) {
             return 0.15;
         }
-
         return Math.min(durationMinutes, 180) * 0.004;
     }
 
@@ -43,24 +39,19 @@ public class RouteScoringService {
         if (numberOfLegs == null || numberOfLegs <= 0) {
             return 0.05;
         }
-
         return Math.min(numberOfLegs, 8) * 0.03;
     }
 
     private double arrivalPenalty(ConcertRecord concert, TransportRecord transport) {
         Optional<LocalDateTime> eventDateTime = eventDateTime(concert);
         Optional<LocalDateTime> arrivalDateTime = parseDateTime(transport.arrivalDateTime());
-
         if (eventDateTime.isEmpty() || arrivalDateTime.isEmpty()) {
             return 0.0;
         }
-
         long minutesBeforeEvent = Duration.between(arrivalDateTime.get(), eventDateTime.get()).toMinutes();
-
         if (minutesBeforeEvent < 0) {
             return Math.min(Math.abs(minutesBeforeEvent) * 0.01, 0.60);
         }
-
         return Math.min(minutesBeforeEvent, 180) * 0.0015;
     }
 
@@ -74,32 +65,25 @@ public class RouteScoringService {
         if (fromIso.isPresent()) {
             return fromIso;
         }
-
         String date = StringUtils.safe(concert.localDate());
         String time = StringUtils.safe(concert.localTime());
-
         if (date.isBlank()) {
             return Optional.empty();
         }
-
         if (time.isBlank()) {
             time = "00:00:00";
         }
-
         if (time.length() == 5) {
             time = time + ":00";
         }
-
         return parseDateTime(date + "T" + time);
     }
 
     private Optional<LocalDateTime> parseDateTime(String value) {
         String safeValue = StringUtils.safe(value);
-
         if (safeValue.isBlank()) {
             return Optional.empty();
         }
-
         return tryParseInstant(safeValue)
                 .or(() -> tryParseOffsetDateTime(safeValue))
                 .or(() -> tryParseLocalDateTime(safeValue));

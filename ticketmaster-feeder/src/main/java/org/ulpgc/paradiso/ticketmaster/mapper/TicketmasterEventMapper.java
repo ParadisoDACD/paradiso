@@ -1,6 +1,9 @@
 package org.ulpgc.paradiso.ticketmaster.mapper;
 
-import com.google.gson.*;
+import com.google.gson.JsonArray;
+import com.google.gson.JsonElement;
+import com.google.gson.JsonObject;
+import com.google.gson.JsonParser;
 import org.ulpgc.paradiso.ticketmaster.model.TicketmasterEvent;
 
 import java.util.ArrayList;

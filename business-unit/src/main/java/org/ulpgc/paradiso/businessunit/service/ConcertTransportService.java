@@ -14,9 +14,11 @@ import java.time.ZoneId;
 import java.util.Arrays;
 import java.util.Comparator;
 import java.util.List;
+import java.util.Optional;
 import java.util.Set;
 import java.util.function.Supplier;
 import java.util.stream.Collectors;
+import java.util.stream.Stream;
 
 public class ConcertTransportService {
 
@@ -56,11 +58,9 @@ public class ConcertTransportService {
 
     public List<ConcertRecord> searchConcerts(String query) {
         String normalizedQuery = StringUtils.normalize(query);
-
         if (normalizedQuery.isBlank()) {
             return datamart.concerts();
         }
-
         return datamart.concerts().stream()
                 .filter(concert -> concertMatches(concert, normalizedQuery))
                 .sorted(this::compareConcertsByDate)
@@ -71,7 +71,6 @@ public class ConcertTransportService {
         List<ConcertRecord> base = StringUtils.normalize(query).isBlank()
                 ? datamart.concerts()
                 : searchConcerts(query);
-
         return base.stream()
                 .filter(concert -> isTodayOrFuture(concert.localDate()))
                 .sorted(this::compareConcertsByDate)
@@ -91,21 +90,17 @@ public class ConcertTransportService {
 
     public ConcertSearchTransportResponse recommendationsForSearch(String query, int limit) {
         String normalizedQuery = StringUtils.normalize(query);
-
         if (normalizedQuery.isBlank()) {
             return ConcertSearchTransportResponse.empty(query);
         }
-
         List<ConcertTransportResponse> results = upcomingConcerts(query, normalizeRecommendationLimit(limit)).stream()
                 .map(this::buildResponse)
                 .toList();
-
         return ConcertSearchTransportResponse.of(query, results);
     }
 
     public List<ConcertRoutePlanRecord> recommendations(RecommendationFilter filter) {
         RecommendationFilter safeFilter = filter == null ? RecommendationFilter.empty() : filter;
-
         return baseRecommendations(safeFilter).stream()
                 .filter(plan -> matchesEvent(plan, safeFilter.eventId()))
                 .filter(plan -> matchesArtist(plan, safeFilter.artist()))
@@ -120,7 +115,6 @@ public class ConcertTransportService {
         if (StringUtils.safe(eventId).isBlank()) {
             return List.of();
         }
-
         return datamart.plansByEventId(eventId);
     }
 
@@ -128,22 +122,13 @@ public class ConcertTransportService {
         if (StringUtils.safe(eventId).isBlank()) {
             return List.of();
         }
-
-        return recommendations(new RecommendationFilter(
-                eventId,
-                null,
-                origin,
-                null,
-                null,
-                null
-        ));
+        return recommendations(new RecommendationFilter(eventId, null, origin, null, null, null));
     }
 
     public List<ConcertRoutePlanRecord> recommendationsByArtist(String artist) {
         if (StringUtils.safe(artist).isBlank()) {
             return List.of();
         }
-
         return datamart.plansByArtist(artist);
     }
 
@@ -151,11 +136,9 @@ public class ConcertTransportService {
         if (StringUtils.safe(artist).isBlank()) {
             return List.of();
         }
-
         if (StringUtils.safe(origin).isBlank()) {
             return recommendationsByArtist(artist);
         }
-
         return datamart.plansByArtistAndOrigin(artist, origin);
     }
 
@@ -163,7 +146,6 @@ public class ConcertTransportService {
         if (StringUtils.safe(origin).isBlank()) {
             return List.of();
         }
-
         return datamart.plansByOrigin(origin);
     }
 
@@ -175,11 +157,9 @@ public class ConcertTransportService {
         if (!StringUtils.safe(filter.eventId()).isBlank()) {
             return datamart.plansByEventId(filter.eventId());
         }
-
         if (!StringUtils.safe(filter.origin()).isBlank()) {
             return datamart.plansByOrigin(filter.origin());
         }
-
         return datamart.plans();
     }
 
@@ -211,11 +191,9 @@ public class ConcertTransportService {
         if (StringUtils.safe(fromDate).isBlank()) {
             return true;
         }
-
         if (StringUtils.safe(date).isBlank()) {
             return false;
         }
-
         return date.compareTo(fromDate) >= 0;
     }
 
@@ -223,32 +201,26 @@ public class ConcertTransportService {
         if (StringUtils.safe(untilDate).isBlank()) {
             return true;
         }
-
         if (StringUtils.safe(date).isBlank()) {
             return false;
         }
-
         return date.compareTo(untilDate) <= 0;
     }
 
     private ConcertTransportResponse buildResponse(ConcertRecord concert) {
         List<TransportRecord> availableRoutes = currentOrFutureTransports();
         Set<String> keywords = extractKeywords(concert.venueName());
-
         if (keywords.isEmpty()) {
             return ConcertTransportResponse.fallback(concert, bestRoutes(availableRoutes));
         }
-
         List<TransportRecord> matched = bestRoutes(
                 availableRoutes.stream()
                         .filter(transport -> hasTransportMatch(transport, keywords))
                         .toList()
         );
-
         if (!matched.isEmpty()) {
             return ConcertTransportResponse.matched(concert, matched);
         }
-
         return ConcertTransportResponse.fallback(concert, bestRoutes(availableRoutes));
     }
 
@@ -256,7 +228,6 @@ public class ConcertTransportService {
         if (limit < MIN_RECOMMENDATION_LIMIT) {
             return DEFAULT_RECOMMENDATION_LIMIT;
         }
-
         return Math.min(limit, MAX_RECOMMENDATION_LIMIT);
     }
 
@@ -285,7 +256,7 @@ public class ConcertTransportService {
                 .orElse(false);
     }
 
-    private java.util.Optional<LocalDate> routeDate(TransportRecord transport) {
+    private Optional<LocalDate> routeDate(TransportRecord transport) {
         return DateUtils.parseDatePrefix(transport.startDateTime())
                 .or(() -> DateUtils.parseDatePrefix(transport.captureDate()));
     }
@@ -312,7 +283,6 @@ public class ConcertTransportService {
                 StringUtils.safe(concert.venueName()),
                 StringUtils.safe(concert.localDate())
         ));
-
         return target.contains(normalizedQuery);
     }
 
@@ -320,18 +290,15 @@ public class ConcertTransportService {
         String searchTarget = StringUtils.normalize(
                 StringUtils.safe(transport.destinationName()) + " " + StringUtils.safe(transport.sourceDestination())
         );
-
         return keywords.stream().anyMatch(searchTarget::contains);
     }
 
     private Set<String> extractKeywords(String venueName) {
         String normalizedVenue = StringUtils.normalize(venueName);
-
         Set<String> aliases = venueAliases(venueName);
         if (!aliases.isEmpty()) {
             return aliases;
         }
-
         return Arrays.stream(normalizedVenue.split("\\s+"))
                 .filter(word -> word.length() > 3)
                 .filter(word -> !STOPWORDS.contains(word))
@@ -345,8 +312,8 @@ public class ConcertTransportService {
     }
 
     private Set<String> keywordsFromMapping(VenueStopMapping mapping) {
-        return java.util.stream.Stream.concat(
-                        java.util.stream.Stream.of(
+        return Stream.concat(
+                        Stream.of(
                                 mapping.venueKey(),
                                 mapping.canonicalVenueName(),
                                 mapping.nearestStopKey(),

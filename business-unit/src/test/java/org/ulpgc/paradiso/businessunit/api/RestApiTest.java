@@ -9,6 +9,7 @@ import org.ulpgc.paradiso.businessunit.datamart.ConcertRecord;
 import org.ulpgc.paradiso.businessunit.datamart.ConcertRoutePlanRecord;
 import org.ulpgc.paradiso.businessunit.datamart.Datamart;
 import org.ulpgc.paradiso.businessunit.service.ConcertTransportService;
+import org.ulpgc.paradiso.businessunit.recommendation.MatchType;
 
 import java.io.IOException;
 import java.net.ServerSocket;
@@ -183,7 +184,7 @@ class RestApiTest {
                 1,
                 "tube",
                 score,
-                "EXACT_DESTINATION",
+                MatchType.EXACT_VENUE_STOP,
                 "2026-05-14T12:00:00Z"
         );
     }

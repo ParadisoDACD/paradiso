@@ -19,8 +19,7 @@ import java.util.UUID;
 public class TicketmasterController {
 
     private static final DateTimeFormatter ISO_UTC =
-            DateTimeFormatter.ofPattern("yyyy-MM-dd'T'HH:mm:ss'Z'")
-                    .withZone(ZoneOffset.UTC);
+            DateTimeFormatter.ofPattern("yyyy-MM-dd'T'HH:mm:ss'Z'").withZone(ZoneOffset.UTC);
 
     private final TicketmasterConfig config;
     private final EventFeeder feeder;
@@ -42,67 +41,50 @@ public class TicketmasterController {
 
     public void executeCapture() {
         CaptureContext context = newCaptureContext();
-
         printCaptureStart(context);
-
         int totalPublished = publishConfiguredSearches(context);
-
         printCaptureSummary(totalPublished);
     }
 
     private CaptureContext newCaptureContext() {
         String capturedAt = Instant.now().toString();
         String batchId = UUID.randomUUID().toString();
-
         String startDateTime = ISO_UTC.format(ZonedDateTime.now(ZoneOffset.UTC));
-        String endDateTime = ISO_UTC.format(
-                ZonedDateTime.now(ZoneOffset.UTC).plusDays(config.getLookaheadDays())
-        );
-
+        String endDateTime = ISO_UTC.format(ZonedDateTime.now(ZoneOffset.UTC).plusDays(config.getLookaheadDays()));
         return new CaptureContext(batchId, capturedAt, startDateTime, endDateTime);
     }
 
     private void printCaptureStart(CaptureContext context) {
         System.out.println("\n[Ticketmaster] ======== Iniciando captura ========");
         System.out.println("[Ticketmaster] Lote: " + context.batchId());
-        System.out.println("[Ticketmaster] Ventana: "
-                + context.startDateTime() + " -> " + context.endDateTime());
+        System.out.println("[Ticketmaster] Ventana: " + context.startDateTime() + " -> " + context.endDateTime());
     }
 
     private int publishConfiguredSearches(CaptureContext context) {
         int totalPublished = 0;
-
         for (String country : config.getCountries()) {
             totalPublished += publishCountrySearches(context, country.trim());
         }
-
         return totalPublished;
     }
 
     private int publishCountrySearches(CaptureContext context, String country) {
         int totalPublished = 0;
-
         for (String city : config.getCities()) {
             totalPublished += publishCitySearches(context, country, city.trim());
         }
-
         return totalPublished;
     }
 
     private int publishCitySearches(CaptureContext context, String country, String city) {
         int totalPublished = 0;
-
         for (String category : config.getCategories()) {
             totalPublished += publishCategorySearch(context, country, city, category.trim());
         }
-
         return totalPublished;
     }
 
-    private int publishCategorySearch(CaptureContext context,
-                                      String country,
-                                      String city,
-                                      String category) {
+    private int publishCategorySearch(CaptureContext context, String country, String city, String category) {
         try {
             List<TicketmasterEvent> events = fetchEvents(context, country, city, category);
             publishEvents(events);
@@ -119,25 +101,12 @@ public class TicketmasterController {
                                                 String city,
                                                 String category) throws Exception {
         TicketmasterSearchRequest request = new TicketmasterSearchRequest(
-                country,
-                city,
-                category,
-                context.startDateTime(),
-                context.endDateTime(),
-                0,
-                50
+                country, city, category, context.startDateTime(), context.endDateTime(), 0, 50
         );
-
         String rawJson = feeder.fetchRawEvents(request);
-
         TicketmasterCaptureContext mapperContext = new TicketmasterCaptureContext(
-                country,
-                city,
-                category,
-                context.batchId(),
-                context.capturedAt()
+                country, city, category, context.batchId(), context.capturedAt()
         );
-
         return mapper.map(rawJson, mapperContext);
     }
 
@@ -148,11 +117,7 @@ public class TicketmasterController {
     }
 
     private void printCategorySummary(String country, String city, String category, int publishedCount) {
-        System.out.printf("  [%s/%s/%s] -> %d eventos publicados%n",
-                country,
-                city,
-                category,
-                publishedCount);
+        System.out.printf("  [%s/%s/%s] -> %d eventos publicados%n", country, city, category, publishedCount);
     }
 
     private void printCaptureError(String city, String category, Exception exception) {

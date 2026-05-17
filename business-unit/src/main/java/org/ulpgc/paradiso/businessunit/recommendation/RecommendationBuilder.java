@@ -44,13 +44,10 @@ public class RecommendationBuilder {
         if (concert == null || StringUtils.safe(concert.externalEventId()).isBlank()) {
             return List.of();
         }
-
         Optional<VenueStopMapping> mapping = venueNormalizer.findMapping(concert.venueName());
-
         if (mapping.isEmpty()) {
             return List.of();
         }
-
         return datamart.transports().stream()
                 .filter(transport -> matchesTransport(transport, mapping.get()))
                 .filter(transport -> hasCompatibleDate(concert, transport))
@@ -63,7 +60,6 @@ public class RecommendationBuilder {
         if (transport == null || StringUtils.safe(transport.journeyKey()).isBlank()) {
             return List.of();
         }
-
         return datamart.concerts().stream()
                 .flatMap(concert -> plansForConcertAndTransport(concert, transport))
                 .sorted(this::comparePlans)
@@ -84,19 +80,15 @@ public class RecommendationBuilder {
     private Stream<ConcertRoutePlanRecord> plansForConcertAndTransport(ConcertRecord concert,
                                                                        TransportRecord transport) {
         Optional<VenueStopMapping> mapping = venueNormalizer.findMapping(concert.venueName());
-
         if (mapping.isEmpty()) {
             return Stream.empty();
         }
-
         if (!matchesTransport(transport, mapping.get())) {
             return Stream.empty();
         }
-
         if (!hasCompatibleDate(concert, transport)) {
             return Stream.empty();
         }
-
         return Stream.of(buildPlan(concert, transport, mapping.get()));
     }
 
@@ -134,11 +126,9 @@ public class RecommendationBuilder {
         if (StringUtils.safe(transport.sourceDestination()).equalsIgnoreCase(StringUtils.safe(mapping.nearestStopKey()))) {
             return true;
         }
-
         String target = StringUtils.normalize(
                 StringUtils.safe(transport.destinationName()) + " " + StringUtils.safe(transport.sourceDestination())
         );
-
         return Stream.concat(
                         Stream.of(mapping.nearestStopName(), mapping.nearestStopKey(), mapping.canonicalVenueName()),
                         mapping.aliases().stream()
@@ -151,21 +141,17 @@ public class RecommendationBuilder {
     private boolean hasCompatibleDate(ConcertRecord concert, TransportRecord transport) {
         Optional<LocalDate> concertDate = concertDate(concert);
         Optional<LocalDate> routeDate = routeDate(transport);
-
         if (concertDate.isEmpty() || routeDate.isEmpty()) {
             return true;
         }
-
         return concertDate.get().equals(routeDate.get());
     }
 
     private Optional<LocalDate> concertDate(ConcertRecord concert) {
         String localDate = StringUtils.safe(concert.localDate());
-
         if (!localDate.isBlank()) {
             return DateUtils.parseDate(localDate);
         }
-
         return DateUtils.parseDatePrefix(concert.dateTimeIso());
     }
 
@@ -179,7 +165,6 @@ public class RecommendationBuilder {
         if (StringUtils.safe(transport.sourceDestination()).equalsIgnoreCase(StringUtils.safe(mapping.nearestStopKey()))) {
             return MatchType.EXACT_VENUE_STOP;
         }
-
         return MatchType.ALIAS_MATCH;
     }
 
@@ -187,15 +172,12 @@ public class RecommendationBuilder {
         if (!StringUtils.safe(concert.dateTimeIso()).isBlank()) {
             return concert.dateTimeIso();
         }
-
         if (StringUtils.safe(concert.localDate()).isBlank()) {
             return "";
         }
-
         if (StringUtils.safe(concert.localTime()).isBlank()) {
             return concert.localDate();
         }
-
         return concert.localDate() + "T" + concert.localTime();
     }
 

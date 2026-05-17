@@ -1,6 +1,9 @@
 package org.ulpgc.paradiso.tfl.mapper;
 
-import com.google.gson.*;
+import com.google.gson.JsonArray;
+import com.google.gson.JsonElement;
+import com.google.gson.JsonObject;
+import com.google.gson.JsonParser;
 import org.ulpgc.paradiso.tfl.model.TflJourney;
 
 import java.nio.charset.StandardCharsets;
@@ -22,7 +25,6 @@ public class TflJourneyMapper {
     private List<TflJourney> parseJourneys(String rawJson, TflCaptureContext context) {
         JsonObject root = JsonParser.parseString(rawJson).getAsJsonObject();
         if (!root.has("journeys")) return new ArrayList<>();
-
         List<TflJourney> result = new ArrayList<>();
         for (JsonElement elem : root.getAsJsonArray("journeys")) {
             tryMapSingleJourney(elem.getAsJsonObject(), context, result);
@@ -56,13 +58,11 @@ public class TflJourneyMapper {
     private void extractLegsData(TflJourney journey, JsonArray legs) {
         journey.setNumberOfLegs(legs.size());
         if (legs.isEmpty()) return;
-
         JsonObject firstLeg = legs.get(0).getAsJsonObject();
         if (firstLeg.has("mode"))
             journey.setFirstLegMode(getString(firstLeg.getAsJsonObject("mode"), "id"));
         if (firstLeg.has("departurePoint"))
             journey.setOriginName(getString(firstLeg.getAsJsonObject("departurePoint"), "commonName"));
-
         JsonObject lastLeg = legs.get(legs.size() - 1).getAsJsonObject();
         if (lastLeg.has("arrivalPoint"))
             journey.setDestinationName(getString(lastLeg.getAsJsonObject("arrivalPoint"), "commonName"));

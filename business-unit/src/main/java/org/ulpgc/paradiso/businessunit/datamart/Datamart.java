@@ -29,24 +29,20 @@ public class Datamart {
 
     public void upsertConcert(ConcertRecord record) {
         if (record.externalEventId() == null || record.externalEventId().isBlank()) return;
-
         ConcertRecord previous = concertsById.put(record.externalEventId(), record);
         if (previous != null) {
             removeConcertFromArtistIndex(previous);
         }
-
         addConcertToArtistIndex(record);
         updateLastProcessedAt(record.capturedAt());
     }
 
     public void upsertTransport(TransportRecord record) {
         if (record.journeyKey() == null || record.journeyKey().isBlank()) return;
-
         TransportRecord previous = transportsByKey.put(record.journeyKey(), record);
         if (previous != null) {
             removeTransportFromIndexes(previous);
         }
-
         addTransportToIndexes(record);
         registerOriginFromTransport(record);
         updateLastProcessedAt(record.capturedAt());
@@ -59,15 +55,12 @@ public class Datamart {
 
     public void upsertPlans(List<ConcertRoutePlanRecord> plans) {
         if (plans == null || plans.isEmpty()) return;
-
         for (ConcertRoutePlanRecord plan : plans) {
             if (plan.planId() == null || plan.planId().isBlank()) continue;
-
             ConcertRoutePlanRecord previous = plansById.put(plan.planId(), plan);
             if (previous != null) {
                 removePlanFromIndexes(previous);
             }
-
             addPlanToIndexes(plan);
         }
     }
@@ -76,7 +69,6 @@ public class Datamart {
         for (ConcertRoutePlanRecord existingPlan : plansByEventId(eventId)) {
             removePlan(existingPlan.planId());
         }
-
         upsertPlans(plans);
     }
 
@@ -171,7 +163,6 @@ public class Datamart {
     private void addConcertToArtistIndex(ConcertRecord record) {
         String artistKey = normalizeIndexKey(record.name());
         if (artistKey.isBlank()) return;
-
         concertsByArtist
                 .computeIfAbsent(artistKey, ignored -> new ConcurrentHashMap<>())
                 .put(record.externalEventId(), record);
@@ -184,7 +175,6 @@ public class Datamart {
     private void addTransportToIndexes(TransportRecord record) {
         String key = compositeKey(record.sourceOrigin(), record.sourceDestination());
         if (key.isBlank()) return;
-
         transportsByOriginAndDestination
                 .computeIfAbsent(key, ignored -> new ConcurrentHashMap<>())
                 .put(record.journeyKey(), record);
@@ -192,11 +182,9 @@ public class Datamart {
 
     private void registerOriginFromTransport(TransportRecord record) {
         String originKey = StringUtils.safe(record.sourceOrigin());
-
         if (originKey.isBlank()) {
             return;
         }
-
         originsByKey.putIfAbsent(originKey, new OriginRecord(
                 originKey,
                 StringUtils.safe(record.originName()).isBlank() ? originKey : record.originName(),
@@ -241,7 +229,6 @@ public class Datamart {
                             String key,
                             ConcertRoutePlanRecord plan) {
         if (key == null || key.isBlank()) return;
-
         index.computeIfAbsent(key, ignored -> new ConcurrentHashMap<>())
                 .put(plan.planId(), plan);
     }
@@ -250,12 +237,9 @@ public class Datamart {
                                      String key,
                                      String id) {
         if (key == null || key.isBlank()) return;
-
         ConcurrentHashMap<String, T> bucket = index.get(key);
         if (bucket == null) return;
-
         bucket.remove(id);
-
         if (bucket.isEmpty()) {
             index.remove(key, bucket);
         }
@@ -263,7 +247,6 @@ public class Datamart {
 
     private List<ConcertRecord> sortedConcerts(ConcurrentHashMap<String, ConcertRecord> source) {
         if (source == null || source.isEmpty()) return List.of();
-
         return source.values().stream()
                 .sorted(Comparator
                         .comparing(ConcertRecord::dateTimeIso,
@@ -275,7 +258,6 @@ public class Datamart {
 
     private List<ConcertRoutePlanRecord> sortedPlans(ConcurrentHashMap<String, ConcertRoutePlanRecord> source) {
         if (source == null || source.isEmpty()) return List.of();
-
         return source.values().stream()
                 .sorted(Comparator
                         .comparing(ConcertRoutePlanRecord::eventDateTime,
@@ -291,7 +273,6 @@ public class Datamart {
 
     private List<TransportRecord> sortedTransports(ConcurrentHashMap<String, TransportRecord> source) {
         if (source == null || source.isEmpty()) return List.of();
-
         return source.values().stream()
                 .sorted(this::compareTransports)
                 .toList();
@@ -311,11 +292,9 @@ public class Datamart {
     private String compositeKey(String left, String right) {
         String normalizedLeft = StringUtils.safe(left);
         String normalizedRight = StringUtils.safe(right);
-
         if (normalizedLeft.isBlank() || normalizedRight.isBlank()) {
             return "";
         }
-
         return normalizedLeft + "|" + normalizedRight;
     }
 

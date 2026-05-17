@@ -8,6 +8,7 @@ import org.ulpgc.paradiso.tfl.config.TflConfig;
 import java.io.IOException;
 import java.net.SocketTimeoutException;
 import java.util.Objects;
+import java.util.Optional;
 import java.util.concurrent.TimeUnit;
 
 public class TflJourneyFeeder implements JourneyFeeder {
@@ -45,24 +46,37 @@ public class TflJourneyFeeder implements JourneyFeeder {
     }
 
     private String executeWithRetry(Request httpRequest, TflJourneyRequest request) throws Exception {
-        Exception lastFailure = null;
         for (int attempt = 0; attempt <= maxRetries; attempt++) {
-            try {
-                return executeRequest(httpRequest, request);
-            } catch (SocketTimeoutException exception) {
-                lastFailure = exception;
-                logRetry("timeout", attempt);
-            } catch (IOException exception) {
-                lastFailure = exception;
-                logRetry("error de red: " + exception.getMessage(), attempt);
-            } catch (RetryableTflException exception) {
-                lastFailure = exception;
-                logRetry(exception.getMessage(), attempt);
-            }
-            if (attempt < maxRetries) sleepBeforeRetry(attempt);
+            Optional<String> result = tryOnce(httpRequest, request, attempt);
+            if (result.isPresent()) return result.get();
         }
-        throw new Exception("TfL no respondió tras " + (maxRetries + 1) + " intentos: "
-                + (lastFailure != null ? lastFailure.getMessage() : "error desconocido"));
+        throw new Exception("TfL no respondió tras " + (maxRetries + 1) + " intentos.");
+    }
+
+    private Optional<String> tryOnce(Request httpRequest, TflJourneyRequest request, int attempt) {
+        try {
+            return Optional.of(executeRequest(httpRequest, request));
+        } catch (SocketTimeoutException exception) {
+            logRetry("timeout", attempt);
+        } catch (IOException exception) {
+            logRetry("error de red: " + exception.getMessage(), attempt);
+        } catch (RetryableTflException exception) {
+            logRetry(exception.getMessage(), attempt);
+        } catch (Exception exception) {
+            logRetry("error: " + exception.getMessage(), attempt);
+        }
+        sleepSafely(attempt);
+        return Optional.empty();
+    }
+
+    private void sleepSafely(int attempt) {
+        if (attempt < maxRetries) {
+            try {
+                sleepBeforeRetry(attempt);
+            } catch (InterruptedException interrupted) {
+                Thread.currentThread().interrupt();
+            }
+        }
     }
 
     private String buildUrl(TflJourneyRequest request) {
@@ -95,9 +109,10 @@ public class TflJourneyFeeder implements JourneyFeeder {
     }
 
     private void logRetry(String reason, int attempt) {
-        if (attempt < maxRetries)
+        if (attempt < maxRetries) {
             System.err.println("  [TfL] Aviso: " + reason
                     + ". Reintentando (" + (attempt + 1) + "/" + maxRetries + ")...");
+        }
     }
 
     private void sleepBeforeRetry(int attempt) throws InterruptedException {

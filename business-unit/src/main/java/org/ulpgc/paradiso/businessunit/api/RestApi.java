@@ -38,14 +38,12 @@ public class RestApi {
 
     public void start() {
         app = Javalin.create().start(port);
-
         registerRootEndpoint();
         registerStatusEndpoint();
         registerConcertEndpoints();
         registerRecommendationEndpoints();
         registerCatalogEndpoints();
         registerTransportEndpoints();
-
         printEndpoints();
     }
 
@@ -93,38 +91,30 @@ public class RestApi {
     private void registerConcertEndpoints() {
         app.get("/concerts", ctx -> {
             String query = ctx.queryParam("query");
-
             if (isBlank(query)) {
                 json(ctx, datamart.concerts());
                 return;
             }
-
             json(ctx, service.searchConcerts(query));
         });
-
         app.get("/concerts/upcoming", ctx -> {
             String query = ctx.queryParam("query");
             int limit = queryParamAsInt(ctx, "limit", DEFAULT_CONCERT_LIMIT, 1, MAX_CONCERT_LIMIT);
             json(ctx, service.upcomingConcerts(query, limit));
         });
-
         app.get("/concerts/{id}", ctx -> {
             String id = ctx.pathParam("id");
-
             datamart.concertById(id).ifPresentOrElse(
                     concert -> json(ctx, concert),
                     () -> jsonError(ctx, 404, "Concierto no encontrado: " + id)
             );
         });
-
         app.get("/concerts/{id}/routes", ctx -> {
             String id = ctx.pathParam("id");
-
             if (datamart.concertById(id).isEmpty()) {
                 jsonError(ctx, 404, "Concierto no encontrado: " + id);
                 return;
             }
-
             RecommendationFilter filter = new RecommendationFilter(
                     id,
                     null,
@@ -133,7 +123,6 @@ public class RestApi {
                     ctx.queryParam("fromDate"),
                     ctx.queryParam("untilDate")
             );
-
             json(ctx, recommendationResponse(ctx, queryMap(filter), service.recommendations(filter)));
         });
     }
@@ -141,7 +130,6 @@ public class RestApi {
     private void registerRecommendationEndpoints() {
         app.get("/artists/{artist}/recommendations", ctx -> {
             String artist = ctx.pathParam("artist");
-
             RecommendationFilter filter = new RecommendationFilter(
                     null,
                     artist,
@@ -150,16 +138,12 @@ public class RestApi {
                     ctx.queryParam("fromDate"),
                     ctx.queryParam("untilDate")
             );
-
             List<ConcertRoutePlanRecord> results = service.recommendations(filter);
-
             if (results.isEmpty()) {
                 ctx.status(404);
             }
-
             json(ctx, recommendationResponse(ctx, queryMap(filter), results));
         });
-
         app.get("/recommendations", ctx -> {
             RecommendationFilter filter = new RecommendationFilter(
                     ctx.queryParam("eventId"),
@@ -169,28 +153,16 @@ public class RestApi {
                     ctx.queryParam("fromDate"),
                     ctx.queryParam("untilDate")
             );
-
             List<ConcertRoutePlanRecord> results = service.recommendations(filter);
             json(ctx, recommendationResponse(ctx, queryMap(filter), results));
         });
-
         app.get("/recommendations/{id}", ctx -> {
             String id = ctx.pathParam("id");
-
             if (datamart.concertById(id).isEmpty()) {
                 jsonError(ctx, 404, "Concierto no encontrado: " + id);
                 return;
             }
-
-            RecommendationFilter filter = new RecommendationFilter(
-                    id,
-                    null,
-                    ctx.queryParam("origin"),
-                    null,
-                    null,
-                    null
-            );
-
+            RecommendationFilter filter = new RecommendationFilter(id, null, ctx.queryParam("origin"), null, null, null);
             json(ctx, recommendationResponse(ctx, queryMap(filter), service.recommendations(filter)));
         });
     }
@@ -202,15 +174,12 @@ public class RestApi {
 
     private void registerTransportEndpoints() {
         app.get("/transport", ctx -> json(ctx, datamart.transports()));
-
         app.get("/concerts/{id}/transport", ctx -> {
             String id = ctx.pathParam("id");
             ConcertTransportResponse response = service.transportForConcert(id);
-
             if (!response.found()) {
                 ctx.status(404);
             }
-
             json(ctx, response);
         });
     }
@@ -222,17 +191,14 @@ public class RestApi {
         List<ConcertRoutePlanRecord> responseResults = isPaginationRequested(ctx)
                 ? paginate(results, paginationRequest)
                 : results;
-
         Map<String, Object> response = new LinkedHashMap<>();
         response.put("query", query);
         response.put("count", results.size());
-
         if (isPaginationRequested(ctx)) {
             response.put("page", paginationRequest.page());
             response.put("size", paginationRequest.size());
             response.put("totalPages", totalPages(results.size(), paginationRequest.size()));
         }
-
         response.put("results", responseResults);
         return response;
     }
@@ -240,21 +206,17 @@ public class RestApi {
     private List<ConcertRoutePlanRecord> paginate(List<ConcertRoutePlanRecord> results,
                                                   PaginationRequest paginationRequest) {
         long from = (long) paginationRequest.page() * paginationRequest.size();
-
         if (from >= results.size()) {
             return List.of();
         }
-
         int fromIndex = (int) from;
         int toIndex = Math.min(fromIndex + paginationRequest.size(), results.size());
-
         return results.subList(fromIndex, toIndex);
     }
 
     private PaginationRequest paginationRequestFrom(Context ctx) {
         int page = queryParamAsInt(ctx, "page", 0, 0, Integer.MAX_VALUE);
         int size = queryParamAsInt(ctx, "size", DEFAULT_PAGE_SIZE, 1, MAX_PAGE_SIZE);
-
         return new PaginationRequest(page, size);
     }
 
@@ -266,7 +228,6 @@ public class RestApi {
         if (totalItems == 0) {
             return 0;
         }
-
         return (int) Math.ceil((double) totalItems / size);
     }
 
@@ -291,7 +252,6 @@ public class RestApi {
         if (!isBlank(first)) {
             return first;
         }
-
         return second;
     }
 
@@ -301,11 +261,9 @@ public class RestApi {
                                 int minValue,
                                 int maxValue) {
         String value = ctx.queryParam(name);
-
         if (value == null || value.isBlank()) {
             return defaultValue;
         }
-
         try {
             int parsed = Integer.parseInt(value);
             return Math.max(minValue, Math.min(maxValue, parsed));

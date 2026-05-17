@@ -20,76 +20,56 @@ public class Main {
     public static void main(String[] args) throws Exception {
         BusinessUnitConfig config = new BusinessUnitConfig();
         printBanner(config);
-
         Datamart datamart = new Datamart();
         VenueNormalizer venueNormalizer = new VenueNormalizer();
         RouteScoringService scoringService = new RouteScoringService();
         RecommendationBuilder recommendationBuilder = new RecommendationBuilder(
-                datamart,
-                venueNormalizer,
-                scoringService
+                datamart, venueNormalizer, scoringService
         );
         BusinessIngestionService ingestionService = new BusinessIngestionService(
-                datamart,
-                recommendationBuilder
+                datamart, recommendationBuilder
         );
         BusinessEventProcessor processor = new BusinessEventProcessor(ingestionService);
-
         System.out.println("[BusinessUnit] Iniciando carga histórica desde event store...");
-
         EventStoreLoader loader = new EventStoreLoader(
-                config.getEventstorePath(),
-                config.getTopics(),
-                processor
+                config.getEventstorePath(), config.getTopics(), processor
         );
-
         int loaded = loader.loadAll();
-
         System.out.println("[BusinessUnit] Reconstruyendo recomendaciones precalculadas...");
         ingestionService.rebuildRecommendations();
-
         System.out.println("[BusinessUnit] Datamart inicial: "
                 + datamart.concertCount() + " conciertos, "
                 + datamart.transportCount() + " rutas, "
                 + datamart.planCount() + " planes precalculados. "
                 + "Líneas leídas del event store: " + loaded);
-
         ReconnectingBusinessUnitSubscriber subscriber = startSubscriberManager(config, processor);
-
         ConcertTransportService service = new ConcertTransportService(datamart);
         RestApi api = new RestApi(datamart, service, config.getApiPort());
         api.start();
-
         CountDownLatch latch = new CountDownLatch(1);
-
         Runtime.getRuntime().addShutdownHook(new Thread(() -> {
             System.out.println("[BusinessUnit] Señal de parada recibida. Cerrando...");
-
             if (subscriber != null) {
                 subscriber.close();
             }
-
             api.stop();
             latch.countDown();
         }));
-
         System.out.println("[BusinessUnit] Sistema listo. Presiona Ctrl+C para detener.");
         latch.await();
     }
 
     private static ReconnectingBusinessUnitSubscriber startSubscriberManager(BusinessUnitConfig config,
-                                                                              BusinessEventProcessor processor) {
+                                                                             BusinessEventProcessor processor) {
         if (!config.isSubscriberEnabled()) {
             System.out.println("[BusinessUnit] Subscriber deshabilitado (subscriber.enabled=false).");
             System.out.println("[BusinessUnit] La API funcionará solo con datos históricos.");
             return null;
         }
-
         ReconnectPolicy reconnectPolicy = new ReconnectPolicy(
                 config.getSubscriberReconnectDelayMillis(),
                 config.getSubscriberReconnectMaxDelayMillis()
         );
-
         ReconnectingBusinessUnitSubscriber subscriber = new ReconnectingBusinessUnitSubscriber(
                 config.getBrokerUrl(),
                 config.getClientId(),
@@ -97,7 +77,6 @@ public class Main {
                 processor,
                 reconnectPolicy
         );
-
         subscriber.start();
         return subscriber;
     }

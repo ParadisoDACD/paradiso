@@ -19,8 +19,7 @@ import java.util.UUID;
 
 public class TflController {
 
-    private static final DateTimeFormatter TFL_DATE_FORMAT =
-            DateTimeFormatter.ofPattern("yyyyMMdd");
+    private static final DateTimeFormatter TFL_DATE_FORMAT = DateTimeFormatter.ofPattern("yyyyMMdd");
 
     private final TflConfig config;
     private final JourneyFeeder feeder;
@@ -42,11 +41,8 @@ public class TflController {
 
     public void executeCapture() {
         CaptureContext context = newCaptureContext();
-
         printCaptureStart(context);
-
         CaptureStats stats = publishConfiguredJourneys(context);
-
         printCaptureSummary(stats);
     }
 
@@ -54,10 +50,8 @@ public class TflController {
         LocalDate baseDate = LocalDate.now();
         int startDayOffset = config.getCaptureStartDayOffset();
         int daysAhead = config.getCaptureDaysAhead();
-
         LocalDate firstCaptureDate = baseDate.plusDays(startDayOffset);
         LocalDate lastCaptureDate = baseDate.plusDays(startDayOffset + daysAhead - 1);
-
         return new CaptureContext(
                 UUID.randomUUID().toString(),
                 Instant.now().toString(),
@@ -83,38 +77,28 @@ public class TflController {
 
     private CaptureStats publishConfiguredJourneys(CaptureContext context) {
         CaptureStats stats = new CaptureStats();
-
         for (int dayOffset = context.startDayOffset();
              dayOffset < context.startDayOffset() + context.daysAhead();
              dayOffset++) {
             CaptureDay day = captureDay(context, dayOffset);
-
             if (!publishDayJourneys(context, day, stats)) {
                 return stats;
             }
         }
-
         return stats;
     }
 
     private CaptureDay captureDay(CaptureContext context, int dayOffset) {
         LocalDate date = context.baseDate().plusDays(dayOffset);
-
-        return new CaptureDay(
-                date.format(TFL_DATE_FORMAT),
-                date.toString()
-        );
+        return new CaptureDay(date.format(TFL_DATE_FORMAT), date.toString());
     }
 
-    private boolean publishDayJourneys(CaptureContext context,
-                                       CaptureDay day,
-                                       CaptureStats stats) {
+    private boolean publishDayJourneys(CaptureContext context, CaptureDay day, CaptureStats stats) {
         for (String[] route : context.routePairs()) {
             if (!publishRouteJourneys(context, day, route, stats)) {
                 return false;
             }
         }
-
         return true;
     }
 
@@ -124,27 +108,22 @@ public class TflController {
                                          CaptureStats stats) {
         String originName = route[0];
         String destinationName = route[1];
-
         Optional<ResolvedRoute> resolvedRoute = resolveRoute(originName, destinationName);
-
         if (resolvedRoute.isEmpty()) {
             return true;
         }
-
         for (String captureTime : context.captureTimes()) {
             if (!publishRouteTime(context, day, resolvedRoute.get(), captureTime.trim(), stats)) {
                 return false;
             }
         }
-
         return true;
     }
 
     private Optional<ResolvedRoute> resolveRoute(String originName, String destinationName) {
         try {
             return Optional.of(new ResolvedRoute(
-                    originName,
-                    destinationName,
+                    originName, destinationName,
                     TflVenueResolver.resolve(originName),
                     TflVenueResolver.resolve(destinationName)
             ));
@@ -189,23 +168,13 @@ public class TflController {
                                            ResolvedRoute route,
                                            String captureTime) throws Exception {
         TflJourneyRequest request = new TflJourneyRequest(
-                route.fromNaptan(),
-                route.toNaptan(),
-                day.tflDate(),
-                captureTime
+                route.fromNaptan(), route.toNaptan(), day.tflDate(), captureTime
         );
-
         String rawJson = feeder.fetchRawJourneys(request);
-
         TflCaptureContext mapperContext = new TflCaptureContext(
-                route.originName(),
-                route.destinationName(),
-                day.isoDate(),
-                captureTime,
-                context.batchId(),
-                context.capturedAt()
+                route.originName(), route.destinationName(),
+                day.isoDate(), captureTime, context.batchId(), context.capturedAt()
         );
-
         return mapper.map(rawJson, mapperContext);
     }
 
@@ -215,26 +184,16 @@ public class TflController {
         }
     }
 
-    private void printRouteSummary(CaptureDay day,
-                                   ResolvedRoute route,
-                                   String captureTime,
-                                   int publishedCount) {
+    private void printRouteSummary(CaptureDay day, ResolvedRoute route, String captureTime, int publishedCount) {
         System.out.printf("  [%s -> %s] %s %s -> %d itinerarios publicados%n",
-                route.originName(),
-                route.destinationName(),
-                day.isoDate(),
-                captureTime,
-                publishedCount);
+                route.originName(), route.destinationName(),
+                day.isoDate(), captureTime, publishedCount);
     }
 
-    private void printRouteError(CaptureDay day,
-                                 ResolvedRoute route,
-                                 String captureTime,
-                                 Exception exception) {
+    private void printRouteError(CaptureDay day, ResolvedRoute route, String captureTime, Exception exception) {
         System.err.println("  [TfL] Error ["
                 + route.originName() + " -> " + route.destinationName() + "] "
-                + day.isoDate() + " " + captureTime + ": "
-                + exception.getMessage());
+                + day.isoDate() + " " + captureTime + ": " + exception.getMessage());
     }
 
     private boolean pauseBetweenRequests() {
@@ -265,8 +224,7 @@ public class TflController {
                                   LocalDate lastCaptureDate) {
     }
 
-    private record CaptureDay(String tflDate,
-                              String isoDate) {
+    private record CaptureDay(String tflDate, String isoDate) {
     }
 
     private record ResolvedRoute(String originName,

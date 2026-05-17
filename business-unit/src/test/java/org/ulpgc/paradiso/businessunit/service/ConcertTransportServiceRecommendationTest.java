@@ -3,6 +3,7 @@ package org.ulpgc.paradiso.businessunit.service;
 import org.junit.jupiter.api.Test;
 import org.ulpgc.paradiso.businessunit.datamart.ConcertRoutePlanRecord;
 import org.ulpgc.paradiso.businessunit.datamart.Datamart;
+import org.ulpgc.paradiso.businessunit.recommendation.MatchType;
 
 import java.util.List;
 
@@ -163,7 +164,7 @@ class ConcertTransportServiceRecommendationTest {
                 2,
                 "tube",
                 0.91,
-                "EXACT_VENUE_STOP",
+                MatchType.EXACT_VENUE_STOP,
                 "2026-05-14T09:00:00Z"
         );
     }

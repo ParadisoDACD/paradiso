@@ -14,7 +14,6 @@ public class BusinessUnitConfig {
         try (InputStream in = getClass()
                 .getClassLoader()
                 .getResourceAsStream("business-unit.properties")) {
-
             if (in == null) {
                 throw new RuntimeException(
                         "[BusinessUnit] ERROR: business-unit.properties no encontrado en resources.\n"
@@ -23,9 +22,7 @@ public class BusinessUnitConfig {
                                 + "  → Ajusta los valores según tu entorno local"
                 );
             }
-
             props.load(in);
-
         } catch (IOException e) {
             throw new RuntimeException("Error leyendo business-unit.properties", e);
         }
@@ -61,9 +58,7 @@ public class BusinessUnitConfig {
     }
 
     public boolean isSubscriberEnabled() {
-        return Boolean.parseBoolean(
-                props.getProperty("subscriber.enabled", "true").trim()
-        );
+        return Boolean.parseBoolean(props.getProperty("subscriber.enabled", "true").trim());
     }
 
     public long getSubscriberReconnectDelayMillis() {
