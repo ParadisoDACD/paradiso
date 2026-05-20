@@ -1,0 +1,16 @@
+[
+  {
+    "originKey": "LondonBridge",
+    "originName": "London Bridge Underground Station",
+    "naptanId": "",
+    "area": "",
+    "active": true
+  },
+  {
+    "originKey": "Paddington",
+    "originName": "Paddington Underground Station",
+    "naptanId": "",
+    "area": "",
+    "active": true
+  }
+]

@@ -1,0 +1,28 @@
+[
+  {
+    "venueKey": "the_o2",
+    "canonicalVenueName": "The O2",
+    "nearestStopKey": "O2Arena",
+    "nearestStopName": "North Greenwich",
+    "aliases": [
+      "The O2",
+      "O2 Arena",
+      "The O2 Arena",
+      "indigo at The O2",
+      "The O2, London",
+      "North Greenwich"
+    ]
+  },
+  {
+    "venueKey": "royal_albert_hall",
+    "canonicalVenueName": "Royal Albert Hall",
+    "nearestStopKey": "RoyalAlbertHall",
+    "nearestStopName": "High Street Kensington",
+    "aliases": [
+      "Royal Albert Hall",
+      "High Street Kensington",
+      "South Kensington",
+      "Kensington"
+    ]
+  }
+]

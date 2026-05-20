@@ -56,6 +56,12 @@ eventstore/
 eventstore-builder.properties
 dependency-reduced-pom.xml
 
+### Samples documentales ###
+!docs/samples/
+!docs/samples/**
+!docs/samples/eventstore/
+!docs/samples/eventstore/**
+
 ### Business Unit
 business-unit.properties
 
