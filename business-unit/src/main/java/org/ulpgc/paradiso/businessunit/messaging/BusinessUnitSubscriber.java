@@ -12,13 +12,7 @@ public class BusinessUnitSubscriber implements AutoCloseable {
     private final Connection connection;
     private final Session session;
     private final List<MessageConsumer> consumers = new ArrayList<>();
-
-    public BusinessUnitSubscriber(String brokerUrl, String clientId,
-                                  List<String> topicNames,
-                                  BusinessEventProcessor processor) throws JMSException {
-        this(brokerUrl, clientId, topicNames, processor, () -> {});
-    }
-
+    
     public BusinessUnitSubscriber(String brokerUrl, String clientId,
                                   List<String> topicNames,
                                   BusinessEventProcessor processor,

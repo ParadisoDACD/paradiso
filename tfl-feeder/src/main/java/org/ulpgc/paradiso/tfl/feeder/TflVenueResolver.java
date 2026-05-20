@@ -118,14 +118,6 @@ public class TflVenueResolver {
         return id;
     }
 
-    public static boolean contains(String logicalName) {
-        return resolveOrNull(logicalName) != null;
-    }
-
-    public static Map<String, String> all() {
-        return Collections.unmodifiableMap(NAPTAN_IDS);
-    }
-
     private static String resolveOrNull(String logicalName) {
         if (logicalName == null || logicalName.isBlank()) {
             return null;

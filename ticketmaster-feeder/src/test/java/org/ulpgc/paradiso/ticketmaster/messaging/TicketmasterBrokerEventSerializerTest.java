@@ -23,30 +23,21 @@ class TicketmasterBrokerEventSerializerTest {
     }
 
     @Test
-    void serializeWithDateTimeIsoUsesDateTimeIsoAsTs() {
+    void serializeUsesCapturedAtAsTs() {
         TicketmasterEvent event = event("2026-06-15T20:00:00Z", "2026-05-05T10:00:00Z");
 
         JsonObject root = JsonParser.parseString(serializer.serialize(event)).getAsJsonObject();
 
-        assertEquals("2026-06-15T20:00:00Z", root.get("ts").getAsString());
-    }
-
-    @Test
-    void serializeWithoutDateTimeIsoUsesCapturedAtAsFallback() {
-        TicketmasterEvent event = event(null, "2026-05-05T10:00:00Z");
-
-        JsonObject root = JsonParser.parseString(serializer.serialize(event)).getAsJsonObject();
-
         assertEquals("2026-05-05T10:00:00Z", root.get("ts").getAsString());
     }
 
     @Test
-    void serializeWithBlankDateTimeIsoUsesCapturedAtAsFallback() {
-        TicketmasterEvent event = event("   ", "2026-05-05T10:00:00Z");
+    void serializeDoesNotUseDateTimeIsoAsTs() {
+        TicketmasterEvent event = event("2026-06-15T20:00:00Z", "2026-05-05T10:00:00Z");
 
         JsonObject root = JsonParser.parseString(serializer.serialize(event)).getAsJsonObject();
 
-        assertEquals("2026-05-05T10:00:00Z", root.get("ts").getAsString());
+        assertNotEquals("2026-06-15T20:00:00Z", root.get("ts").getAsString());
     }
 
     @Test

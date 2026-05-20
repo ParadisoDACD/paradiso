@@ -14,17 +14,8 @@ public class TicketmasterBrokerEventSerializer {
     }
 
     public String serialize(TicketmasterEvent event) {
-        String ts = resolveTs(event);
         BrokerEvent<TicketmasterEvent> brokerEvent =
-                new BrokerEvent<>(ts, sourceSystem, event);
+                new BrokerEvent<>(event.getCapturedAt(), sourceSystem, event);
         return GSON.toJson(brokerEvent);
-    }
-
-    private String resolveTs(TicketmasterEvent event) {
-        String dateTimeIso = event.getDateTimeIso();
-        if (dateTimeIso != null && !dateTimeIso.isBlank()) {
-            return dateTimeIso;
-        }
-        return event.getCapturedAt();
     }
 }

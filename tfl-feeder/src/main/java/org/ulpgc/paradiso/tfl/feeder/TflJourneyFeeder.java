@@ -23,10 +23,6 @@ public class TflJourneyFeeder implements JourneyFeeder {
         this(config.getAppKey(), config.getJourneyBaseUrl(), httpConfigFrom(config));
     }
 
-    public TflJourneyFeeder(String appKey, String baseUrl) {
-        this(appKey, baseUrl, HttpConfig.defaults());
-    }
-
     private TflJourneyFeeder(String appKey, String baseUrl, HttpConfig config) {
         this.appKey = appKey;
         this.baseUrl = baseUrl;
@@ -134,9 +130,6 @@ public class TflJourneyFeeder implements JourneyFeeder {
                               int callTimeoutSeconds,
                               int maxRetries,
                               long retryBackoffMillis) {
-        static HttpConfig defaults() {
-            return new HttpConfig(10, 45, 60, 2, 1000);
-        }
     }
 
     private static class RetryableTflException extends Exception {
