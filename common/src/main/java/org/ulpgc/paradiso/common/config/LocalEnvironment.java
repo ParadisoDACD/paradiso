@@ -1,4 +1,4 @@
-package org.ulpgc.paradiso.ticketmaster.config;
+package org.ulpgc.paradiso.common.config;
 
 import java.io.IOException;
 import java.nio.charset.StandardCharsets;
