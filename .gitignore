@@ -58,3 +58,11 @@ dependency-reduced-pom.xml
 
 ### Business Unit
 business-unit.properties
+
+### Variables de entorno locales ###
+.env
+.env.local
+**/.env
+**/.env.local
+!.env.example
+!**/.env.example
