@@ -13,23 +13,23 @@ import java.util.concurrent.TimeUnit;
 
 public class TflJourneyFeeder implements JourneyFeeder {
 
-    private static final String BASE_URL = "https://api.tfl.gov.uk/Journey/JourneyResults";
-
+    private final String baseUrl;
     private final String appKey;
     private final OkHttpClient httpClient;
     private final int maxRetries;
     private final long retryBackoffMillis;
 
     public TflJourneyFeeder(TflConfig config) {
-        this(config.getAppKey(), httpConfigFrom(config));
+        this(config.getAppKey(), config.getJourneyBaseUrl(), httpConfigFrom(config));
     }
 
-    public TflJourneyFeeder(String appKey) {
-        this(appKey, HttpConfig.defaults());
+    public TflJourneyFeeder(String appKey, String baseUrl) {
+        this(appKey, baseUrl, HttpConfig.defaults());
     }
 
-    private TflJourneyFeeder(String appKey, HttpConfig config) {
+    private TflJourneyFeeder(String appKey, String baseUrl, HttpConfig config) {
         this.appKey = appKey;
+        this.baseUrl = baseUrl;
         this.maxRetries = config.maxRetries();
         this.retryBackoffMillis = config.retryBackoffMillis();
         this.httpClient = new OkHttpClient.Builder()
@@ -80,7 +80,7 @@ public class TflJourneyFeeder implements JourneyFeeder {
     }
 
     private String buildUrl(TflJourneyRequest request) {
-        return BASE_URL
+        return baseUrl
                 + "/" + request.fromNaptan() + "/to/" + request.toNaptan()
                 + "?app_key=" + appKey
                 + "&date=" + request.date() + "&time=" + request.time()

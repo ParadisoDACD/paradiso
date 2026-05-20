@@ -1,4 +1,5 @@
 app.key=
+journey.base.url=
 
 origins=KingsCross,Victoria,Waterloo,Paddington,LondonBridge,LiverpoolStreet,Euston,Marylebone,CharingCross,Stratford,CanaryWharf,BakerStreet,OxfordCircus,PiccadillyCircus,LeicesterSquare,TottenhamCourtRoad,Farringdon,Blackfriars,Westminster,Bank,Moorgate,GreenPark,Holborn,SouthKensington,Hammersmith,ShepherdsBush,Whitechapel,CamdenTown,NottingHillGate,Heathrow
 destinations=O2Arena,WembleyPark,BrixtonAcademy,RoyalAlbertHall,AlexandraPalace
@@ -14,6 +15,6 @@ request.max.retries=2
 request.retry.backoff.ms=1000
 capture.period.minutes=90
 
-broker.url=tcp://localhost:61616
+broker.url=
 topic.name=TflJourney
 source.system=tfl-feeder

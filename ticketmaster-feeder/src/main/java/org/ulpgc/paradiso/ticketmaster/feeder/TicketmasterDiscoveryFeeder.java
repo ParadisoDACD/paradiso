@@ -11,14 +11,13 @@ import java.util.concurrent.TimeUnit;
 
 public class TicketmasterDiscoveryFeeder implements EventFeeder {
 
-    private static final String BASE_URL =
-            "https://app.ticketmaster.com/discovery/v2/events.json";
-
+    private final String baseUrl;
     private final String apiKey;
     private final OkHttpClient httpClient;
 
-    public TicketmasterDiscoveryFeeder(String apiKey) {
+    public TicketmasterDiscoveryFeeder(String apiKey, String baseUrl) {
         this.apiKey = apiKey;
+        this.baseUrl = baseUrl;
         this.httpClient = new OkHttpClient.Builder()
                 .connectTimeout(10, TimeUnit.SECONDS)
                 .readTimeout(15, TimeUnit.SECONDS)
@@ -39,7 +38,7 @@ public class TicketmasterDiscoveryFeeder implements EventFeeder {
     }
 
     private String buildUrl(TicketmasterSearchRequest request) {
-        return BASE_URL
+        return baseUrl
                 + "?apikey=" + apiKey
                 + "&countryCode=" + request.countryCode()
                 + "&city=" + encode(request.city())

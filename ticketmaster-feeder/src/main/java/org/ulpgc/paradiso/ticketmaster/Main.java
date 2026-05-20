@@ -57,7 +57,7 @@ public class Main {
 
             TicketmasterController controller = new TicketmasterController(
                     config,
-                    new TicketmasterDiscoveryFeeder(config.getApiKey()),
+                    new TicketmasterDiscoveryFeeder(config.getApiKey(), config.getApiBaseUrl()),
                     new TicketmasterEventMapper(),
                     publisher,
                     new TicketmasterBrokerEventSerializer(config.getSourceSystem())

@@ -1,569 +1,453 @@
 # Paradiso
 
-Proyecto de la asignatura **Desarrollo de Aplicaciones para Ciencia de Datos** de la Universidad de Las Palmas de Gran Canaria.
+**Paradiso** es una aplicación Java 21 multimódulo desarrollada para integrar eventos musicales de Londres con información de transporte público. El sistema captura datos desde fuentes externas, los publica como eventos, los almacena en un Event Store histórico y los explota desde una unidad de negocio que ofrece recomendaciones de rutas hacia conciertos mediante API REST y CLI interactiva.
 
-**Paradiso** es una aplicación Java 21 multimódulo que integra eventos musicales en Londres con rutas de transporte público de Transport for London. El sistema captura datos externos, los publica en un broker ActiveMQ, los persiste como eventos históricos en un Event Store y los explota desde una unidad de negocio mediante una API REST.
-
-La versión actual del repositorio corresponde al **Sprint 3**, centrado en la explotación de datos en tiempo real y en diferido mediante el módulo `business-unit`.
+El proyecto corresponde a la asignatura **Desarrollo de Aplicaciones para Ciencia de Datos** de la Universidad de Las Palmas de Gran Canaria.
 
 ---
 
-## Estado actual del proyecto
+## Índice
 
-La rama `main` contiene la implementación actual del sistema con los módulos:
-
-- `ticketmaster-feeder`
-- `tfl-feeder`
-- `eventstore-builder`
-- `business-unit`
-
-Los sprints anteriores quedan preservados como hitos históricos del repositorio mediante tags Git cuando están disponibles.
-
-```bash
-git checkout sprint-1
-git checkout sprint-2
-git checkout main
-```
-
----
-
-## Objetivo funcional
-
-Paradiso permite combinar dos tipos de información:
-
-- **Eventos de Ticketmaster**, principalmente conciertos y eventos musicales en Londres.
-- **Rutas de Transport for London**, calculadas desde orígenes relevantes de Londres hacia paradas cercanas a venues.
-
-A partir de esos datos, el módulo `business-unit` genera recomendaciones de transporte para responder preguntas como:
-
-- qué rutas hay disponibles para llegar a un concierto concreto;
-- qué conciertos de un artista tienen rutas calculadas;
-- cómo llegar desde un origen concreto a un evento;
-- qué eventos son accesibles desde una estación determinada;
-- qué ruta tiene mejor puntuación según duración, número de tramos y hora de llegada.
+1. [Propuesta de valor](#propuesta-de-valor)
+2. [Funcionalidades principales](#funcionalidades-principales)
+3. [Arquitectura del sistema](#arquitectura-del-sistema)
+4. [Arquitectura de la aplicación](#arquitectura-de-la-aplicación)
+5. [Módulos del proyecto](#módulos-del-proyecto)
+6. [Justificación de fuentes externas y datamart](#justificación-de-fuentes-externas-y-datamart)
+7. [Formato de eventos y Event Store](#formato-de-eventos-y-event-store)
+8. [Configuración](#configuración)
+9. [Compilación](#compilación)
+10. [Ejecución](#ejecución)
+11. [CLI interactiva](#cli-interactiva)
+12. [API REST](#api-rest)
+13. [Datos generados de ejemplo](#datos-generados-de-ejemplo)
+14. [Tests y validación](#tests-y-validación)
+15. [Principios y patrones de diseño](#principios-y-patrones-de-diseño)
+16. [Estructura del repositorio](#estructura-del-repositorio)
+17. [Evolución por sprints](#evolución-por-sprints)
 
 ---
 
-## Arquitectura general
+## Propuesta de valor
+
+Paradiso permite planificar la asistencia a conciertos en Londres combinando dos dimensiones que normalmente se consultan por separado:
+
+- eventos musicales disponibles;
+- rutas de transporte público hacia los recintos donde se celebran.
+
+La unidad de negocio construye un datamart de recomendaciones que relaciona conciertos, recintos, estaciones de origen y rutas TfL compatibles. A partir de esa información, el usuario puede consultar próximos conciertos, buscar eventos por texto, seleccionar un origen de salida y obtener rutas recomendadas con duración, modo de transporte, hora de salida, hora de llegada y puntuación.
+
+El valor del sistema no está únicamente en capturar datos, sino en transformarlos en una vista de negocio preparada para responder preguntas útiles:
+
+- qué conciertos están disponibles próximamente;
+- desde qué orígenes TfL se puede planificar una salida;
+- qué rutas existen hacia un recinto concreto;
+- qué recomendaciones están disponibles para un concierto determinado;
+- qué rutas son más convenientes según duración, número de tramos y proximidad al recinto.
+
+---
+
+## Funcionalidades principales
+
+- Captura de eventos musicales en Londres mediante `ticketmaster-feeder`.
+- Captura de rutas de transporte público mediante `tfl-feeder`.
+- Publicación de eventos JSON en ActiveMQ mediante topics independientes.
+- Persistencia histórica append-only mediante `eventstore-builder`.
+- Organización del Event Store por topic, fuente y fecha.
+- Reconstrucción del datamart desde eventos históricos.
+- Consumo opcional en tiempo real desde ActiveMQ.
+- Generación de recomendaciones precalculadas entre conciertos y rutas.
+- Consulta mediante API REST.
+- Consulta mediante CLI interactiva ejecutable desde IntelliJ.
+- Configuración privada mediante variables de entorno, `.env` o ficheros `.properties` locales ignorados por Git.
+- Pruebas automatizadas por módulo.
+
+---
+
+## Arquitectura del sistema
+
+Paradiso sigue una arquitectura modular orientada a eventos. Los feeders capturan información externa y publican eventos en ActiveMQ. El módulo `eventstore-builder` consume esos eventos y los conserva en un Event Store histórico. El módulo `business-unit` carga eventos históricos, mantiene un datamart y expone la funcionalidad final al usuario.
+
+![Arquitectura del sistema](docs/diagrams/system-architecture.png)
+
+Flujo general:
 
 ```text
-Ticketmaster API
-    ↓
-ticketmaster-feeder
-    ↓ publica eventos en ActiveMQ
-Topic: TicketmasterEvent
-    ↓
-eventstore-builder
-    ↓ persiste JSON Lines en eventstore
-
-TfL Unified API
-    ↓
-tfl-feeder
-    ↓ publica eventos en ActiveMQ
-Topic: TflJourney
-    ↓
-eventstore-builder
-    ↓ persiste JSON Lines en eventstore
-
-Event Store + ActiveMQ
-    ↓
-business-unit
-    ↓ carga histórico, consume tiempo real y mantiene datamart
-API REST
+Fuentes externas
+      │
+      ▼
+Feeders
+      │
+      ▼
+ActiveMQ
+      │
+      ├──────────────► Event Store Builder ──────────────► Event Store
+      │                                                        │
+      ▼                                                        ▼
+Business Unit ◄────────────────────────────────────── Carga histórica
+      │
+      ├──────────────► API REST
+      └──────────────► CLI interactiva
 ```
 
-Flujo conceptual completo:
+La arquitectura final se aproxima a una **Kappa simplificada**: tanto los eventos históricos como los eventos recibidos en tiempo real son procesados por la misma lógica de negocio. El histórico inicializa el datamart y el consumo real-time permite mantenerlo actualizado durante la ejecución.
+
+---
+
+## Arquitectura de la aplicación
+
+La aplicación se divide en módulos Maven independientes, cada uno con una responsabilidad clara. Dentro de cada módulo se separan las tareas de configuración, consumo externo, transformación, mensajería, persistencia, carga, consulta y exposición.
+
+![Arquitectura de aplicación](docs/diagrams/application-architecture.png)
+
+### Feeders
+
+Los feeders aplican una estructura común:
 
 ```text
-API externa
-    → Feeder OkHttp
-    → Mapper de modelo interno
-    → Serializer de evento broker {ts, ss, payload}
-    → ActiveMQ Topic
-    → Event Store JSON Lines
-    → Business Unit
-    → Datamart
-    → API REST
+configuración ─► cliente externo ─► mapper ─► modelo interno ─► evento JSON ─► publisher JMS
+```
+
+### Event Store Builder
+
+El constructor del Event Store se suscribe de forma durable a los topics configurados y escribe cada evento como una línea JSON independiente.
+
+```text
+subscriber JMS ─► validador de evento ─► resolución temporal ─► escritor append-only
+```
+
+### Business Unit
+
+La unidad de negocio transforma los eventos en vistas optimizadas de consulta.
+
+```text
+EventStoreLoader ─┐
+                  ├─► BusinessEventProcessor ─► BusinessIngestionService ─► Datamart
+Subscriber JMS ───┘                                                     │
+                                                                         ├─► REST API
+                                                                         └─► CLI
 ```
 
 ---
 
-## Módulos
+## Módulos del proyecto
 
-| Módulo | Rol | Descripción | Topics |
+| Módulo | Responsabilidad | Patrón principal | Topic |
 |---|---|---|---|
-| `ticketmaster-feeder` | Publisher | Captura eventos de Ticketmaster y publica eventos JSON en ActiveMQ | `TicketmasterEvent` |
-| `tfl-feeder` | Publisher | Captura itinerarios TfL entre orígenes y destinos configurados | `TflJourney` |
-| `eventstore-builder` | Subscriber durable | Consume eventos desde ActiveMQ y los persiste como `.events` | `TicketmasterEvent`, `TflJourney` |
-| `business-unit` | Unidad de negocio | Carga histórico, consume tiempo real, mantiene datamart y expone API REST | `TicketmasterEvent`, `TflJourney` |
+| `ticketmaster-feeder` | Captura eventos musicales, los transforma y los publica. | Adapter + Publisher | `TicketmasterEvent` |
+| `tfl-feeder` | Captura rutas TfL para orígenes y destinos configurados. | Adapter + Publisher | `TflJourney` |
+| `eventstore-builder` | Consume eventos y los almacena en ficheros históricos. | Durable Subscriber + Event Store | `TicketmasterEvent`, `TflJourney` |
+| `business-unit` | Reconstruye el datamart y ofrece recomendaciones al usuario. | Datamart + Service Layer + REST/CLI | `TicketmasterEvent`, `TflJourney` |
 
 ---
 
-## Tecnologías principales
+## Justificación de fuentes externas y datamart
 
-- **Java 21**
-- **Maven multimódulo**
-- **IntelliJ IDEA**
-- **Apache ActiveMQ Classic** como broker externo
-- **JMS / ActiveMQ Client 5.15.12**
-- **OkHttp** para consumo de APIs externas
-- **Gson** para serialización y parseo JSON
-- **Javalin** para la API REST de `business-unit`
-- **JUnit 5** para pruebas automatizadas
+### Ticketmaster
+
+Ticketmaster se utiliza como fuente de eventos porque proporciona datos adecuados para el caso de uso de Paradiso:
+
+- identificador externo del evento;
+- nombre del concierto o artista;
+- fecha y hora;
+- ciudad y país;
+- recinto;
+- género o clasificación;
+- dirección pública del evento cuando está disponible en la respuesta externa.
+
+Es una fuente dinámica porque el catálogo de eventos cambia con el tiempo. Cada captura se transforma en eventos propios del sistema, con timestamp y fuente de origen, para conservar su evolución en el Event Store.
+
+### Transport for London
+
+Transport for London se utiliza como fuente de rutas porque permite obtener itinerarios de transporte público dentro del mismo ámbito geográfico que los eventos: Londres.
+
+El feeder de TfL trabaja con un catálogo controlado de orígenes y destinos. Esta decisión reduce capturas innecesarias, evita combinaciones masivas y centra la información en rutas útiles para los recintos musicales contemplados por el proyecto.
+
+La fuente sigue siendo dinámica porque cada ejecución consulta la API externa para fechas y horas configuradas. Los resultados pueden variar por horarios, disponibilidad del servicio, incidencias o cambios operativos.
+
+### Compatibilidad entre fuentes
+
+La combinación de ambas fuentes es coherente porque Ticketmaster aporta el evento y su recinto, mientras que TfL aporta la movilidad hacia puntos cercanos a esos recintos. El sistema normaliza venues y destinos mediante catálogos internos de correspondencia para generar recomendaciones comparables.
+
+### Diseño del datamart
+
+El datamart de `business-unit` está implementado en memoria y se reconstruye desde el Event Store al arrancar. Esta decisión es adecuada porque el Event Store actúa como fuente histórica persistente y permite recomponer el estado de negocio cuando sea necesario.
+
+Modelos principales:
+
+| Modelo | Descripción |
+|---|---|
+| `ConcertRecord` | Vista de negocio de un evento musical. |
+| `TransportRecord` | Vista de negocio de una ruta TfL. |
+| `OriginRecord` | Origen de transporte disponible para consultas. |
+| `ConcertRoutePlanRecord` | Recomendación precalculada entre concierto, origen y ruta. |
+
+El datamart mantiene índices por evento, origen, artista, recinto y combinaciones relevantes para que las consultas REST y CLI no tengan que recalcular todas las relaciones en cada petición.
 
 ---
 
-## Broker de mensajería
+## Formato de eventos y Event Store
 
-El broker utilizado es **Apache ActiveMQ Classic**. Se ejecuta como una aplicación externa al proyecto Java.
-
-Configuración local habitual:
-
-```text
-Broker URL: tcp://localhost:61616
-Web Console: http://127.0.0.1:8161/admin
-```
-
-Credenciales por defecto de la consola web:
-
-```text
-admin / admin
-```
-
-El proyecto usa la dependencia `activemq-client` con versión `5.15.12`, manteniendo compatibilidad con `javax.jms`.
-
----
-
-## Formato de evento
-
-Todos los mensajes publicados en ActiveMQ son `TextMessage` con contenido JSON.
-
-Estructura común:
+Los feeders publican mensajes JSON con una estructura común:
 
 ```json
 {
   "ts": "2026-05-05T10:46:09.910902100Z",
-  "ss": "tfl-feeder",
+  "ss": "ticketmaster-feeder",
   "payload": {
     "...": "..."
   }
 }
 ```
 
-Campos:
-
 | Campo | Descripción |
 |---|---|
-| `ts` | Timestamp UTC asociado al dato. Se usa para organizar temporalmente el Event Store. |
-| `ss` | Source system. Identifica el módulo productor del evento. |
-| `payload` | Objeto completo del modelo interno serializado a JSON. |
+| `ts` | Timestamp UTC asociado al dato. |
+| `ss` | Identificador del sistema productor. |
+| `payload` | Datos propios del evento producido por cada feeder. |
 
-Criterio de `ts` por fuente:
-
-| Fuente | Valor de `ts` |
-|---|---|
-| Ticketmaster | `dateTimeIso` cuando existe; `capturedAt` como fallback |
-| TfL | `capturedAt`, porque `startDateTime` no incluye zona horaria |
-
----
-
-## Event Store
-
-El Event Store generado por `eventstore-builder` sigue la estructura:
+El Event Store se organiza siguiendo la estructura:
 
 ```text
 eventstore/{topic}/{ss}/{YYYYMMDD}.events
 ```
 
+Cada fichero `.events` usa formato JSON Lines:
+
+- un evento JSON completo por línea;
+- escritura en modo append;
+- sin sobrescribir capturas previas;
+- separación temporal por fecha calculada a partir de `ts`.
+
 Ejemplo:
 
 ```text
-eventstore/
-├── TicketmasterEvent/
-│   └── ticketmaster-feeder/
-│       ├── 20260505.events
-│       └── ...
-└── TflJourney/
-    └── tfl-feeder/
-        ├── 20260505.events
-        └── ...
-```
-
-Cada fichero `.events` usa formato **JSON Lines / NDJSON**:
-
-- un evento JSON completo por línea;
-- sin array envolvente;
-- sin comas entre eventos;
-- escritura en modo append;
-- el nombre del fichero se obtiene a partir del campo `ts`.
-
-Ejemplo:
-
-```jsonl
-{"ts":"2026-05-05T17:30:00Z","ss":"ticketmaster-feeder","payload":{"externalEventId":"17uYvxG65mp7JRS","name":"ZAZ"}}
-{"ts":"2026-05-05T10:46:09.910902100Z","ss":"tfl-feeder","payload":{"journeyHash":"6e95af24028b418b"}}
+eventstore/TicketmasterEvent/ticketmaster-feeder/20260520.events
+eventstore/TflJourney/tfl-feeder/20260520.events
 ```
 
 ---
 
 ## Configuración
 
-Cada módulo utiliza un fichero `.properties.example` versionado como plantilla. Los ficheros `.properties` reales no deben subirse al repositorio.
+La configuración privada no se versiona. El repositorio incluye plantillas seguras para documentar las variables y propiedades necesarias.
 
-### Ticketmaster Feeder
-
-Plantilla:
+Prioridad de configuración:
 
 ```text
-ticketmaster-feeder/src/main/resources/ticketmaster.properties.example
+variables de entorno reales
+        ↓
+.env local
+        ↓
+ficheros .properties locales
+        ↓
+valores por defecto seguros
 ```
 
-Fichero local esperado:
+### Ficheros versionados
 
-```text
-ticketmaster-feeder/src/main/resources/ticketmaster.properties
-```
+| Fichero | Propósito |
+|---|---|
+| `.env.example` | Plantilla general de variables de entorno. |
+| `ticketmaster.properties.example` | Plantilla local para `ticketmaster-feeder`. |
+| `tfl.properties.example` | Plantilla local para `tfl-feeder`. |
+| `eventstore-builder.properties.example` | Plantilla local para `eventstore-builder`. |
+| `business-unit.properties.example` | Plantilla local para `business-unit`. |
 
-Propiedades principales:
+### Ficheros no versionados
 
-```properties
-api.key=TU_CLAVE_TICKETMASTER
-countries=GB
-cities=London
-categories=music,festival
-lookahead.days=60
-capture.period.minutes=60
-broker.url=tcp://localhost:61616
-topic.name=TicketmasterEvent
-source.system=ticketmaster-feeder
-```
+| Fichero | Motivo |
+|---|---|
+| `.env` | Contiene valores locales de ejecución. |
+| `ticketmaster.properties` | Puede contener clave o configuración privada. |
+| `tfl.properties` | Puede contener clave o configuración privada. |
+| `eventstore-builder.properties` | Configuración local del Event Store. |
+| `business-unit.properties` | Configuración local del datamart, API y subscriber. |
 
-### TfL Feeder
+### Variables principales
 
-Plantilla:
+| Variable | Uso |
+|---|---|
+| `PARADISO_BROKER_URL` | Dirección del broker ActiveMQ. |
+| `PARADISO_TOPICS` | Topics consumidos por módulos subscriber. |
+| `PARADISO_EVENTSTORE_PATH` | Ruta del Event Store. |
+| `PARADISO_API_PORT` | Puerto de la API REST. |
+| `PARADISO_SUBSCRIBER_ENABLED` | Activa o desactiva consumo real-time en `business-unit`. |
+| `PARADISO_TICKETMASTER_API_KEY` | Clave local de Ticketmaster. |
+| `PARADISO_TICKETMASTER_BASE_URL` | URL base externa de Ticketmaster. |
+| `PARADISO_TFL_APP_KEY` | Clave local de TfL. |
+| `PARADISO_TFL_BASE_URL` | URL base externa de TfL. |
 
-```text
-tfl-feeder/src/main/resources/tfl.properties.example
-```
+Los nombres de variables pueden convivir con propiedades locales equivalentes. Las claves reales y las URLs base externas no deben escribirse directamente en las clases Java.
 
-Fichero local esperado:
+### Ejemplo de `.env`
 
-```text
-tfl-feeder/src/main/resources/tfl.properties
-```
+```env
+PARADISO_BROKER_URL=tcp://localhost:61616
+PARADISO_TOPICS=TicketmasterEvent,TflJourney
+PARADISO_EVENTSTORE_PATH=eventstore
+PARADISO_API_PORT=7000
+PARADISO_SUBSCRIBER_ENABLED=false
 
-El feeder de TfL trabaja con catálogos de orígenes y destinos. Los orígenes representan estaciones relevantes de Londres desde las que un usuario podría iniciar su viaje. Los destinos se mantienen limitados a paradas cercanas a venues musicales usados por el proyecto, para que las rutas capturadas estén alineadas con las recomendaciones generadas por la unidad de negocio.
-Ejemplo de configuración:
+PARADISO_TICKETMASTER_API_KEY=<ticketmaster-api-key>
+PARADISO_TICKETMASTER_BASE_URL=<ticketmaster-base-url>
 
-```properties
-app.key=TU_CLAVE_TFL
-origins=KingsCross,Victoria,Waterloo,Paddington,LondonBridge,LiverpoolStreet,Euston,Marylebone,CharingCross,Stratford,CanaryWharf,BakerStreet,OxfordCircus,PiccadillyCircus,LeicesterSquare,TottenhamCourtRoad,Farringdon,Blackfriars,Westminster,Bank,Moorgate,GreenPark,Holborn,SouthKensington,Hammersmith,ShepherdsBush,Whitechapel,CamdenTown,NottingHillGate,Heathrow
-destinations=O2Arena,WembleyPark,BrixtonAcademy,RoyalAlbertHall,AlexandraPalace
-capture.times=1530,1600,1630,1700,1730,1800,1815,1830,1845,1900,1915,1930,1945,2000,2030
-capture.start.day.offset=0
-capture.days.ahead=10
-request.sleep.ms=150
-http.connect.timeout.seconds=10
-http.read.timeout.seconds=45
-http.call.timeout.seconds=60
-request.max.retries=2
-request.retry.backoff.ms=1000
-capture.period.minutes=90
-broker.url=tcp://localhost:61616
-topic.name=TflJourney
-source.system=tfl-feeder
-```
-
-También se mantiene compatibilidad con la configuración legacy basada en `routes=origen>destino` cuando no se definen `origins` y `destinations`.
-
-### Event Store Builder
-
-Plantilla:
-
-```text
-eventstore-builder/src/main/resources/eventstore-builder.properties.example
-```
-
-Fichero local esperado:
-
-```text
-eventstore-builder/src/main/resources/eventstore-builder.properties
-```
-
-Contenido típico:
-
-```properties
-broker.url=tcp://localhost:61616
-client.id=paradiso-eventstore-builder
-topics=TicketmasterEvent,TflJourney
-eventstore.path=eventstore
-```
-
-### Business Unit
-
-Plantilla:
-
-```text
-business-unit/src/main/resources/business-unit.properties.example
-```
-
-Fichero local esperado:
-
-```text
-business-unit/src/main/resources/business-unit.properties
-```
-
-Propiedades habituales:
-
-```properties
-broker.url=tcp://localhost:61616
-client.id=paradiso-business-unit
-topics=TicketmasterEvent,TflJourney
-eventstore.path=eventstore
-api.port=7000
-subscriber.enabled=true
-subscriber.reconnect.delay.ms=5000
-subscriber.reconnect.max.delay.ms=30000
+PARADISO_TFL_APP_KEY=<tfl-app-key>
+PARADISO_TFL_BASE_URL=<tfl-base-url>
 ```
 
 ---
 
-## Business Unit y Sprint 3
+## Compilación
 
-El módulo `business-unit` explota los eventos históricos y en tiempo real para construir un datamart local en memoria.
-
-### Flujo de arranque
-
-```text
-1. Crea el datamart en memoria.
-2. Crea VenueNormalizer.
-3. Crea RouteScoringService.
-4. Crea RecommendationBuilder.
-5. Crea BusinessIngestionService.
-6. Carga eventos históricos desde eventstore.
-7. Reconstruye recomendaciones precalculadas.
-8. Arranca el subscriber en tiempo real.
-9. Arranca la API REST.
-```
-
-### Datamart
-
-El datamart almacena:
-
-| Modelo | Descripción |
-|---|---|
-| `ConcertRecord` | Evento procedente de Ticketmaster |
-| `TransportRecord` | Ruta procedente de TfL |
-| `OriginRecord` | Origen disponible para recomendaciones |
-| `ConcertRoutePlanRecord` | Recomendación precalculada para un concierto y una ruta |
-
-La relación entre venues de Ticketmaster y paradas cercanas de TfL se gestiona mediante `VenueNormalizer` y `VenueStopMapping`, que permiten construir las recomendaciones compatibles.
-
-Además, mantiene índices para consultar rápidamente por:
-
-- evento;
-- artista;
-- origen;
-- artista + origen;
-- origen + destino.
-
-### Componentes principales
-
-| Clase | Responsabilidad |
-|---|---|
-| `BusinessEventProcessor` | Convierte eventos JSON en modelos internos |
-| `BusinessIngestionService` | Centraliza la ingestión de conciertos y rutas |
-| `VenueNormalizer` | Normaliza venues de Ticketmaster hacia paradas TfL |
-| `RecommendationBuilder` | Genera recomendaciones precalculadas |
-| `RouteScoringService` | Calcula la puntuación de una ruta |
-| `Datamart` | Guarda datos base, orígenes, planes e índices |
-| `RestApi` | Expone las consultas al usuario final |
-
-### Vista materializada de recomendaciones
-
-Las recomendaciones se guardan como una vista materializada:
-
-```text
-concierto + venue normalizado + origen + ruta TfL compatible
-```
-
-Esto evita recalcular rutas en cada consulta REST y permite responder rápidamente por evento, artista, origen o combinación de filtros.
-
----
-
-## Ejecución
-
-### 1. Compilar y empaquetar
-
-Desde la raíz del proyecto:
+Desde la raíz del repositorio:
 
 ```bash
 mvn clean package
 ```
 
-También puede compilarse un único módulo:
+Compilar un módulo concreto:
 
 ```bash
 mvn -pl business-unit package
 ```
 
-El empaquetado genera los JAR ejecutables de los módulos.
+Ejecutar los tests:
 
-### 2. Arrancar ActiveMQ Classic
-
-Desde la carpeta de instalación de ActiveMQ. Ejemplo en Windows:
-
-```powershell
-cd C:\apache-activemq-5.19.6
-.\bin\win64\activemq.bat console
+```bash
+mvn test
 ```
 
-El broker queda escuchando en:
+---
+
+## Ejecución
+
+### ActiveMQ
+
+ActiveMQ debe estar disponible antes de ejecutar los módulos que publican o consumen eventos en tiempo real.
+
+Configuración habitual:
 
 ```text
-tcp://localhost:61616
+Broker URL: tcp://localhost:61616
 ```
 
-### 3. Arrancar Event Store Builder
+### Event Store Builder
 
-Desde la raíz del proyecto:
-
-```powershell
-java -jar .\eventstore-builder\target\eventstore-builder-1.0-SNAPSHOT.jar
+```bash
+java -jar eventstore-builder/target/eventstore-builder-1.0-SNAPSHOT.jar
 ```
 
-Este proceso queda escuchando indefinidamente los topics configurados.
+El módulo queda suscrito a los topics configurados y escribe eventos en la ruta definida para el Event Store.
 
-### 4. Ejecutar feeders en modo one-shot
+### Ticketmaster Feeder
 
-Ticketmaster:
+Ejecución única:
 
-```powershell
-java -jar .\ticketmaster-feeder\target\ticketmaster-feeder-1.0-SNAPSHOT.jar --once
+```bash
+java -jar ticketmaster-feeder/target/ticketmaster-feeder-1.0-SNAPSHOT.jar --once
 ```
 
-TfL:
+Ejecución periódica:
 
-```powershell
-java -jar .\tfl-feeder\target\tfl-feeder-1.0-SNAPSHOT.jar --once
+```bash
+java -jar ticketmaster-feeder/target/ticketmaster-feeder-1.0-SNAPSHOT.jar
 ```
 
-### 5. Ejecutar feeders en modo periódico
+### TfL Feeder
 
-Sin `--once`, cada feeder ejecuta capturas periódicas según `capture.period.minutes`:
+Ejecución única:
 
-```powershell
-java -jar .\ticketmaster-feeder\target\ticketmaster-feeder-1.0-SNAPSHOT.jar
-java -jar .\tfl-feeder\target\tfl-feeder-1.0-SNAPSHOT.jar
+```bash
+java -jar tfl-feeder/target/tfl-feeder-1.0-SNAPSHOT.jar --once
 ```
 
-### 6. Arrancar Business Unit
+Ejecución periódica:
 
-```powershell
-java -jar .\business-unit\target\business-unit-1.0-SNAPSHOT.jar
+```bash
+java -jar tfl-feeder/target/tfl-feeder-1.0-SNAPSHOT.jar
 ```
 
-La API REST queda disponible en:
+### Business Unit
+
+Modo API REST:
+
+```bash
+java -jar business-unit/target/business-unit-1.0-SNAPSHOT.jar
+```
+
+Modo CLI interactiva:
+
+```bash
+java -jar business-unit/target/business-unit-1.0-SNAPSHOT.jar --cli
+```
+
+En modo CLI, la API REST también queda disponible mientras la consola interactiva está activa.
+
+---
+
+## CLI interactiva
+
+La CLI permite consultar el datamart desde consola sin utilizar herramientas externas.
+
+Funcionalidades disponibles:
+
+1. Ver próximos conciertos en Londres.
+2. Buscar conciertos por artista, recinto o nombre.
+3. Seleccionar un concierto.
+4. Seleccionar un origen TfL.
+5. Consultar rutas recomendadas cuando existan planes precalculados.
+
+Ejemplo de flujo:
 
 ```text
-http://localhost:7000
+Paradiso — Planificador de conciertos
+
+[1] Ver próximos conciertos en Londres
+[2] Buscar conciertos por artista, recinto o nombre
+[3] Salir
+
+Elige una opción: 1
 ```
+
+La CLI utiliza el mismo datamart que la API REST. Por tanto, los resultados dependen de los eventos históricos cargados y de los eventos recibidos en tiempo real si el subscriber está activado.
 
 ---
 
 ## API REST
 
-### Estado del datamart
-
-```powershell
-Invoke-RestMethod http://localhost:7000/status | ConvertTo-Json -Depth 5
-```
-
-Ejemplo orientativo de respuesta:
-
-```json
-{
-  "concerts": 167,
-  "transports": 1589,
-  "origins": 30,
-  "routePlans": 339,
-  "lastProcessedAt": "2026-07-09T17:30:00Z"
-}
-```
+La API REST expone el datamart y las recomendaciones de la unidad de negocio.
 
 ### Endpoints principales
 
 | Método | Endpoint | Descripción |
 |---|---|---|
-| GET | `/status` | Estado general del datamart y de la unidad de negocio |
-| GET | `/concerts` | Lista de conciertos disponibles en el datamart |
-| GET | `/concerts?query={texto}` | Búsqueda de conciertos por texto |
-| GET | `/concerts/upcoming` | Próximos conciertos |
-| GET | `/concerts/upcoming?query={text}&limit={n}` | Próximos conciertos filtrados por texto y límite |
-| GET | `/concerts/{id}` | Detalle de un concierto |
-| GET | `/concerts/{id}/routes` | Rutas recomendadas precalculadas para un concierto |
-| GET | `/concerts/{id}/routes?origin={origin}` | Rutas recomendadas para un concierto desde un origen concreto |
-| GET | `/artists/{artist}/recommendations` | Recomendaciones por artista |
-| GET | `/artists/{artist}/recommendations?origin={origin}` | Recomendaciones por artista desde un origen concreto |
-| GET | `/recommendations` | Consulta general de recomendaciones precalculadas |
-| GET | `/recommendations?artist={artist}&origin={origin}&venue={venue}&fromDate={yyyy-mm-dd}&untilDate={yyyy-mm-dd}` | Recomendaciones filtradas |
-| GET | `/recommendations?page={page}&size={size}` | Recomendaciones paginadas |
-| GET | `/origins` | Orígenes TfL disponibles |
-| GET | `/venues` | Venues conocidos y paradas TfL asociadas |
+| GET | `/` | Información general de la API. |
+| GET | `/status` | Estado del datamart. |
+| GET | `/concerts` | Conciertos disponibles. |
+| GET | `/concerts?query={texto}` | Búsqueda de conciertos por texto. |
+| GET | `/concerts/upcoming` | Próximos conciertos. |
+| GET | `/concerts/{id}` | Detalle de un concierto. |
+| GET | `/concerts/{id}/routes` | Rutas recomendadas para un concierto. |
+| GET | `/concerts/{id}/routes?origin={origin}` | Rutas para un concierto desde un origen. |
+| GET | `/recommendations` | Recomendaciones disponibles. |
+| GET | `/recommendations?page={page}&size={size}` | Recomendaciones paginadas. |
+| GET | `/recommendations?artist={artist}&origin={origin}&venue={venue}` | Recomendaciones filtradas. |
+| GET | `/artists/{artist}/recommendations` | Recomendaciones por artista. |
+| GET | `/origins` | Orígenes TfL cargados. |
+| GET | `/venues` | Recintos normalizados y destinos asociados. |
+| GET | `/transport` | Rutas TfL cargadas. |
 
-### Endpoint de diagnóstico
+### Ejemplo de estado del datamart
 
-| Método | Endpoint | Descripción |
-|---|---|---|
-| GET | `/transport` | Inspección de rutas TfL cargadas en el datamart |
-
-### Endpoints legacy
-
-| Método | Endpoint | Descripción |
-|---|---|---|
-| GET | `/concerts/{id}/transport` | Endpoint mantenido por compatibilidad |
-| GET | `/recommendations/{id}` | Endpoint mantenido por compatibilidad |
-
-Los endpoints legacy se conservan para no romper compatibilidad, pero el flujo principal del Sprint 3 debe probarse mediante `/concerts/{id}/routes`, `/artists/{artist}/recommendations` y `/recommendations`.
-
-### Ejemplos de consultas
-
-Consultar orígenes:
-
-```powershell
-Invoke-RestMethod http://localhost:7000/origins | ConvertTo-Json -Depth 5
-```
-
-Consultar venues mapeados:
-
-```powershell
-Invoke-RestMethod http://localhost:7000/venues | ConvertTo-Json -Depth 8
-```
-
-Consultar recomendaciones paginadas:
-
-```powershell
-Invoke-RestMethod "http://localhost:7000/recommendations?page=0&size=5" | ConvertTo-Json -Depth 10
-```
-
-Consultar rutas para un concierto concreto:
-
-```powershell
-Invoke-RestMethod "http://localhost:7000/concerts/G5vHZbSELNbiT/routes?page=0&size=5" | ConvertTo-Json -Depth 10
-```
-
-Los identificadores de conciertos de los ejemplos son orientativos. Para una prueba real, primero consulta `/concerts` o `/concerts/upcoming` y utiliza un `externalEventId` existente en tu datamart.
-
-Consultar recomendaciones por artista:
-
-```powershell
-Invoke-RestMethod "http://localhost:7000/artists/Joe%20Bonamassa/recommendations?page=0&size=5" | ConvertTo-Json -Depth 10
-```
-
-Consultar recomendaciones por origen:
-
-```powershell
-Invoke-RestMethod "http://localhost:7000/recommendations?origin=Paddington&page=0&size=5" | ConvertTo-Json -Depth 10
+```json
+{
+  "concerts": 167,
+  "transports": 192,
+  "origins": 5,
+  "routePlans": 21,
+  "lastProcessedAt": "2026-05-20T09:34:00Z"
+}
 ```
 
 ### Ejemplo de recomendación
@@ -572,10 +456,9 @@ Invoke-RestMethod "http://localhost:7000/recommendations?origin=Paddington&page=
 {
   "eventId": "G5vHZbSELNbiT",
   "artistName": "Joe Bonamassa",
+  "eventName": "Joe Bonamassa",
   "venueName": "Royal Albert Hall",
-  "originKey": "Paddington",
   "originName": "Paddington Underground Station",
-  "destinationStopKey": "RoyalAlbertHall",
   "destinationStopName": "High Street Kensington",
   "departureTime": "2026-05-06T19:07:00",
   "arrivalTime": "2026-05-06T19:13:00",
@@ -587,64 +470,105 @@ Invoke-RestMethod "http://localhost:7000/recommendations?origin=Paddington&page=
 }
 ```
 
-Consultar recomendaciones filtradas por artista, origen y venue:
+---
 
-```powershell
-Invoke-RestMethod "http://localhost:7000/recommendations?artist=Joe%20Bonamassa&origin=Paddington&venue=Royal%20Albert%20Hall&page=0&size=5" | ConvertTo-Json -Depth 10
+## Datos generados de ejemplo
+
+El repositorio incluye muestras reducidas en `docs/samples/`. Estas muestras documentan el formato de los datos generados sin versionar capturas completas ni información privada.
+
+Estructura prevista:
+
+```text
+docs/samples/
+├── eventstore/
+│   ├── TicketmasterEvent/
+│   │   └── ticketmaster-feeder/
+│   │       └── sample.events
+│   └── TflJourney/
+│       └── tfl-feeder/
+│           └── sample.events
+└── datamart/
+    ├── status.json
+    ├── concerts.json
+    ├── transport.json
+    ├── origins.json
+    ├── venues.json
+    └── recommendations.json
 ```
+
+Las muestras del Event Store mantienen el formato JSON Lines. Las muestras del datamart representan respuestas de la API REST tras procesar eventos históricos.
 
 ---
 
-## Verificación básica
+## Tests y validación
 
-Listar ficheros generados:
-
-```powershell
-Get-ChildItem -Recurse .\eventstore
-```
-
-Ver primeras líneas de eventos:
-
-```powershell
-Get-Content .\eventstore\TicketmasterEvent\*\*.events -TotalCount 2
-Get-Content .\eventstore\TflJourney\*\*.events -TotalCount 2
-```
-
-Ejecutar tests:
+Ejecutar todos los tests:
 
 ```bash
 mvn test
 ```
 
-Ejecutar tests de un módulo concreto:
+Ejecutar tests por módulo:
 
 ```bash
+mvn -pl ticketmaster-feeder test
+mvn -pl tfl-feeder test
+mvn -pl eventstore-builder test
 mvn -pl business-unit test
 ```
 
+Aspectos cubiertos:
+
+- serialización de eventos con `ts`, `ss` y `payload`;
+- mapeo desde respuestas externas a modelos internos;
+- escritura append-only del Event Store;
+- lectura histórica desde ficheros `.events`;
+- reconstrucción del datamart;
+- normalización de recintos;
+- generación de recomendaciones;
+- scoring de rutas;
+- endpoints REST principales;
+- formato de salida de la CLI.
+
 ---
 
-## Tests automatizados
+## Principios y patrones de diseño
 
-El proyecto incluye pruebas unitarias e integración ligera para los módulos principales.
+### Separación de responsabilidades
 
-En `business-unit` se validan, entre otros aspectos:
+Cada módulo separa consumo, transformación, publicación, persistencia, carga histórica y consulta. Esta división facilita pruebas, mantenimiento y evolución.
 
-- carga histórica desde el Event Store;
-- procesamiento de eventos Ticketmaster y TfL;
-- actualización del datamart;
-- normalización de venues;
-- generación de recomendaciones precalculadas;
-- scoring de rutas;
-- consulta de recomendaciones por evento, artista y origen.
+### Publisher/Subscriber
 
-La suite debe ejecutarse sin fallos antes de cada entrega:
+Los feeders publican eventos en topics independientes y los consumidores se suscriben a ellos. Esta estrategia desacopla productores y consumidores.
 
-```text
-mvn test
-```
+### Durable Subscriber
 
-El número exacto de tests puede variar conforme se añadan pruebas de validación, pero la entrega final debe mantenerse en verde.
+`eventstore-builder` utiliza suscripción durable para conservar eventos no consumidos durante interrupciones temporales.
+
+### Event Store
+
+Los eventos se almacenan como fuente histórica append-only. El sistema conserva capturas pasadas y permite reconstruir vistas de negocio.
+
+### Datamart
+
+`business-unit` mantiene una vista optimizada de consulta para evitar recalcular recomendaciones en cada petición.
+
+### Materialized View
+
+Las recomendaciones `ConcertRoutePlanRecord` actúan como vista materializada entre conciertos, recintos, orígenes y rutas.
+
+### Service Layer
+
+La lógica de negocio queda encapsulada en servicios. La API REST y la CLI consumen esos servicios sin acceder directamente a detalles de ingestión o procesamiento.
+
+### Adapter y Mapper
+
+Los feeders aíslan las fuentes externas mediante clientes y transforman las respuestas a modelos internos antes de publicarlas.
+
+### Configuración externa
+
+Las claves, URLs base y parámetros de ejecución se mantienen fuera del código fuente.
 
 ---
 
@@ -654,6 +578,7 @@ El número exacto de tests puede variar conforme se añadan pruebas de validaci�
 paradiso/
 ├── pom.xml
 ├── README.md
+├── .env.example
 ├── ticketmaster-feeder/
 │   └── src/main/java/org/ulpgc/paradiso/ticketmaster/
 ├── tfl-feeder/
@@ -663,6 +588,7 @@ paradiso/
 ├── business-unit/
 │   └── src/main/java/org/ulpgc/paradiso/businessunit/
 │       ├── api/
+│       ├── cli/
 │       ├── config/
 │       ├── datamart/
 │       ├── event/
@@ -670,36 +596,22 @@ paradiso/
 │       ├── messaging/
 │       ├── recommendation/
 │       ├── service/
+│       ├── utils/
 │       ├── venue/
 │       └── Main.java
 └── docs/
-    ├── sprint1/
-    ├── sprint2/
-    └── sprint3/
+    ├── diagrams/
+    └── samples/
 ```
 
----
-
-## Versionado y artefactos locales
-
-El repositorio mantiene el código fuente, configuración de ejemplo, documentación y tests.
-
-No deben subirse a GitHub:
-
-- claves reales de API;
-- ficheros `.properties` locales;
-- contenido generado de `eventstore/`;
-- artefactos `target/`;
-- ficheros temporales del IDE.
-
-El fichero `.gitignore` recoge estos artefactos locales y generados.
+Los directorios generados durante la ejecución, los artefactos Maven, las claves reales, los `.env` locales y los `.properties` privados quedan fuera del versionado.
 
 ---
 
-## Hitos del proyecto
+## Evolución por sprints
 
-| Hito | Descripción |
+| Sprint | Resultado |
 |---|---|
-| Sprint 1 | Captura directa y persistencia incremental en SQLite |
-| Sprint 2 | Arquitectura Publisher/Subscriber con ActiveMQ y Event Store JSON Lines |
-| Sprint 3 | Business Unit con datamart, consumo histórico/tiempo real y API REST de recomendaciones |
+| Sprint 1 | Captura de dos fuentes externas dinámicas y persistencia incremental independiente. |
+| Sprint 2 | Arquitectura Publisher/Subscriber con ActiveMQ y Event Store JSON Lines. |
+| Sprint 3 | Business Unit con carga histórica, consumo real-time, datamart, API REST y CLI interactiva. |

@@ -11,6 +11,12 @@ public class BusinessUnitConfig {
     private final Properties props = new Properties();
     private final LocalEnvironment localEnvironment = new LocalEnvironment();
 
+    private String requiredValue(String envKey, String propKey) {
+        String result = value(envKey, propKey, "");
+        if (!result.isBlank()) return result;
+        throw new IllegalStateException("Configuración requerida no definida: "
+                + envKey + " o " + propKey);
+    }
     public BusinessUnitConfig() {
         try (InputStream in = getClass()
                 .getClassLoader()
@@ -22,7 +28,7 @@ public class BusinessUnitConfig {
     }
 
     public String getBrokerUrl() {
-        return value("PARADISO_BROKER_URL", "broker.url", "tcp://localhost:61616");
+        return requiredValue("PARADISO_BROKER_URL", "broker.url");
     }
 
     public String getClientId() {

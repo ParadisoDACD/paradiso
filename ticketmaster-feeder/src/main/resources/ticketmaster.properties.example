@@ -1,10 +1,12 @@
 api.key=
+api.base.url=
+
 countries=GB
 cities=London
 categories=music,festival
 lookahead.days=60
 capture.period.minutes=60
 
-broker.url=tcp://localhost:61616
+broker.url=
 topic.name=TicketmasterEvent
 source.system=ticketmaster-feeder

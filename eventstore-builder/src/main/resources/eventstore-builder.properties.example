@@ -1,4 +1,4 @@
-broker.url=tcp://localhost:61616
+broker.url=
 client.id=paradiso-eventstore-builder
 topics=TicketmasterEvent,TflJourney
 eventstore.path=eventstore
