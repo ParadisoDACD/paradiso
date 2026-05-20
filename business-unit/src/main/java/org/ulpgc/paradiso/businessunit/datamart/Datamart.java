@@ -182,16 +182,19 @@ public class Datamart {
 
     private void registerOriginFromTransport(TransportRecord record) {
         String originKey = StringUtils.safe(record.sourceOrigin());
-        if (originKey.isBlank()) {
-            return;
-        }
+        if (originKey.isBlank()) return;
         originsByKey.putIfAbsent(originKey, new OriginRecord(
                 originKey,
-                StringUtils.safe(record.originName()).isBlank() ? originKey : record.originName(),
+                originName(record, originKey),
                 "",
-                "London",
+                "",
                 true
         ));
+    }
+
+    private String originName(TransportRecord record, String originKey) {
+        String name = StringUtils.safe(record.originName());
+        return name.isBlank() ? originKey : name;
     }
 
     private void removeTransportFromIndexes(TransportRecord record) {

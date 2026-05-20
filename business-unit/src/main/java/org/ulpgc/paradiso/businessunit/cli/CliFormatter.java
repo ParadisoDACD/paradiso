@@ -47,8 +47,7 @@ public class CliFormatter {
 
     private String originArea(OriginRecord origin) {
         String area = StringUtils.safe(origin.area());
-        if (area.isBlank() || area.equalsIgnoreCase("Londres")) return "";
-        return "  (zona: " + area + ")";
+        return area.isBlank() ? "" : "  (zona: " + area + ")";
     }
 
     public String routeDetail(ConcertRoutePlanRecord plan, int position) {
